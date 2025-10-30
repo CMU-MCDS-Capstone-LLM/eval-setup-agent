@@ -1,0 +1,8 @@
+__pycache__/
+.venv/
+.envrc
+draft/
+examples/repos/
+repos/
+demo/
+envs/
