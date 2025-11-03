@@ -2,13 +2,15 @@
 
 - [ ] Generate run.sh and build.sh separately
 
-- [ ] Don't copy the repo into image. Instead map it to the image
+- [ ] Make the prompt more detailed to avoid unneeded failure
+
+- [x] Don't copy the repo into image. Instead map it to the image
 
   Try a manual example first
 
-- [ ] Read through testing agent codebase
+- [x] Read through testing agent codebase
 
-- [ ] Read through coding agent codebase
+- [x] Read through coding agent codebase
 
 ## How to set up environment to run evaluation on PyMigBench?
 
@@ -128,10 +130,10 @@ pip install -e .
 
 ### Prerequisites
 
-- Python ≥ 3.10
+- Python ≥ 3.11
 - Docker with BuildKit support
-- Claude Agent SDK: `pip install claude-agent-sdk`
 - Claude API key (if required): `export CLAUDE_API_KEY=...`
+  You can also the claude code cli with monthly pro subscription. The python sdk will communicate to the cli internally. This avoid using API and makes the cost more controllable (20 USD per month), at the cost of more rate-limiting
 
 ## Usage
 
