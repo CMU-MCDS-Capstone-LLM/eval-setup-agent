@@ -102,6 +102,9 @@ async def run_one(
     logger.info("Initializing Claude agent")
     agent = ClaudeRepoAgent(repo_path=Path(spec.repo_path), model=model)
 
+    # Track iteration number for saving artifacts
+    iteration_counter = {"count": 0}
+
     # Define build and test callback
     async def build_and_test_cb(dvars: DockerVars) -> Tuple[bool, str, str, str]:
         """
@@ -113,9 +116,29 @@ async def run_one(
         Returns:
             Tuple of (ok, build_tail, run_tail, classification)
         """
+        iteration_counter["count"] += 1
+        iteration_num = iteration_counter["count"]
+
+        logger.info(f"=== Iteration {iteration_num} ===")
+
+        # Create iteration directory
+        iteration_dir = Path(spec.env_dir) / "iterations" / f"round_{iteration_num}"
+        iteration_dir.mkdir(parents=True, exist_ok=True)
+
+        # Save the decision JSON for this iteration
+        decision_data = asdict(dvars)
+        decision_json_path = iteration_dir / "decision.json"
+        decision_json_path.write_text(json.dumps(decision_data, indent=2))
+        logger.debug(f"Saved decision JSON to {decision_json_path}")
+
         # Render Dockerfile
         logger.info("Rendering Dockerfile from template")
         render_dockerfile(Path(spec.env_dir), templates_dir, asdict(dvars))
+
+        # Also save Dockerfile to iteration directory
+        dockerfile_content = (Path(spec.env_dir) / "Dockerfile").read_text()
+        (iteration_dir / "Dockerfile").write_text(dockerfile_content)
+        logger.debug(f"Saved Dockerfile to {iteration_dir}")
 
         # Build
         tag = f"envsetup/{spec.env_id}:tests"
@@ -134,6 +157,17 @@ async def run_one(
         if not bres.success:
             logger.error(f"Docker build failed: {bres.message}")
             logger.debug(f"Build log tail: {build_tail[-500:]}")
+
+            # Save iteration result
+            result_data = {
+                "iteration": iteration_num,
+                "success": False,
+                "build_success": False,
+                "classification": "build_failed",
+                "message": bres.message
+            }
+            (iteration_dir / "result.json").write_text(json.dumps(result_data, indent=2))
+
             return (False, build_tail, "", "build_failed")
 
         logger.info("Docker build successful")
@@ -159,6 +193,17 @@ async def run_one(
         if not ok:
             logger.debug(f"Run log tail: {run_tail[-500:]}")
 
+        # Save iteration result
+        result_data = {
+            "iteration": iteration_num,
+            "success": ok,
+            "build_success": True,
+            "test_returncode": rc,
+            "classification": cls,
+            "message": f"Classification: {cls}"
+        }
+        (iteration_dir / "result.json").write_text(json.dumps(result_data, indent=2))
+
         return (ok, build_tail, run_tail, cls)
 
     # Run agent
@@ -175,6 +220,8 @@ async def run_one(
     )
 
     logger.info(f"Agent completed with status: {decision.status.value}")
+    if iteration_counter["count"] > 0:
+        logger.info(f"Completed {iteration_counter['count']} iteration(s)")
 
     # Write artifacts
     logger.info("Writing output artifacts")
@@ -204,7 +251,7 @@ async def run_one(
     write_summary(env_dir, spec, decision)
     logger.debug(f"Wrote summary.md to {env_dir}")
 
-    # Optionally write decision JSON
+    # Write final decision JSON (at root level)
     decision_json = env_dir / "decision.json"
     decision_data = {
         "status": decision.status.value,
@@ -216,4 +263,7 @@ async def run_one(
     logger.debug(f"Wrote decision.json to {env_dir}")
 
     logger.info(f"Environment setup complete for {spec.env_id}")
+    if iteration_counter["count"] > 0:
+        logger.info(f"Iteration artifacts saved to: {env_dir / 'iterations'}")
+
     return decision

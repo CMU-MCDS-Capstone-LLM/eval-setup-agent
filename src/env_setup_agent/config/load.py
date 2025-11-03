@@ -3,7 +3,11 @@
 import os
 import yaml
 from pathlib import Path
+from importlib.resources import files, as_file
 from typing import Optional, Dict, Any
+
+from env_setup_agent.resources.configs.prompts import DEFAULT_PROMPTS_DIR
+from env_setup_agent.resources.configs.templates import DEFAULT_TEMPLATES_DIR
 from .model import Config, AgentConfig, PathConfig
 
 
@@ -43,7 +47,7 @@ def load_from_yaml(config_path: Path) -> Config:
     paths_data = data.get("paths", {})
 
     # Resolve paths relative to repo_root if they're relative
-    def resolve_path(path_str: str, default: str) -> str:
+    def resolve_path(path_str: str, default: str | Path) -> str:
         if not path_str:
             path_str = default
         path = Path(path_str)
@@ -58,11 +62,11 @@ def load_from_yaml(config_path: Path) -> Config:
         ),
         prompts_dir=resolve_path(
             paths_data.get("prompts_dir", ""),
-            "src/env_setup_agent/agent/prompts"
+            DEFAULT_PROMPTS_DIR
         ),
         templates_dir=resolve_path(
             paths_data.get("templates_dir", ""),
-            "src/env_setup_agent/templating"
+            DEFAULT_TEMPLATES_DIR
         ),
     )
 

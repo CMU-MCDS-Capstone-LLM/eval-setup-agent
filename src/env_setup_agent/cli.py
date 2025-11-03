@@ -8,7 +8,6 @@ from pathlib import Path
 from typing import Optional
 import os
 import logging
-from importlib.resources import files
 
 from .core.models import RepoSpec
 from .config import load_from_yaml
@@ -103,16 +102,8 @@ async def run_from_config(config_path: Path) -> int:
         # Get paths from config
         # prompts_dir = Path(config.paths.prompts_dir)
         # templates_dir = Path(config.paths.templates_dir)
-        prompts_dir = Path(
-            config.paths.prompts_dir
-            if "prompts_dir" in config.paths
-            else str(files("env_setup_agent.resources.configs.prompts"))
-        )
-        templates_dir = Path(
-            config.paths.templates_dir
-            if "templates_dir" in config.paths
-            else str(files("env_setup_agent.resources.configs.templates"))
-        )
+        prompts_dir = Path(config.paths.prompts_dir).resolve()
+        templates_dir = Path(config.paths.templates_dir).resolve()
         data_root = Path(config.paths.data_root)
 
         logger.info(f"Prompts directory: {prompts_dir}")
@@ -148,6 +139,9 @@ async def run_from_config(config_path: Path) -> int:
     except Exception as e:
         logger = logging.getLogger(__name__)
         logger.error(f"Error: {e}")
+        import traceback
+        tb_str = traceback.format_exc()
+        logger.error(tb_str)
         return 1
 
 
