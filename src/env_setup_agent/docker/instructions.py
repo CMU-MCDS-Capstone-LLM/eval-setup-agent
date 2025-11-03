@@ -20,6 +20,8 @@ def write_run_instructions(
         mount_dir: Mount path inside container
         env_id: Environment identifier
     """
+    # TODO: Write a build.sh and run.sh separately
+
     script = f"""#!/usr/bin/env bash
 set -euo pipefail
 

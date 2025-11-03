@@ -9,6 +9,8 @@ from ..core.models import Decision, DockerVars
 from ..core.enums import Status
 from ..core import schema as schema_mod
 
+from ..utils.logging import get_logger
+logger = get_logger()
 
 # Utilities
 
@@ -161,9 +163,12 @@ class ClaudeRepoAgent:
         Returns:
             Decision from agent
         """
+        logger.debug(f"_ask(client={client}, user_text={user_text})")
+        logger.debug("")
+
         # Import here to avoid requiring SDK at module level
         try:
-            from claude_agent_sdk import AssistantMessage, TextBlock
+            from claude_agent_sdk import AssistantMessage, TextBlock, ToolUseBlock
         except ImportError:
             # Fallback for development/testing
             return Decision(Status.REFUSE, "Claude SDK not available", None, {})
@@ -172,10 +177,16 @@ class ClaudeRepoAgent:
         chunks: List[str] = []
 
         async for msg in client.receive_response():
+            logger.debug(f"Claude response: ")
             if isinstance(msg, AssistantMessage):
                 for blk in msg.content:
                     if isinstance(blk, TextBlock):
                         chunks.append(blk.text)
+                        logger.debug(blk.text)
+                    elif isinstance(blk, ToolUseBlock):
+                        logger.debug(f"Tool call: {blk.name}({blk.input})")
+            else:
+                logger.debug(f"{msg}")
 
         try:
             raw = first_json_object("".join(chunks))
@@ -211,11 +222,15 @@ class ClaudeRepoAgent:
         Returns:
             Final Decision
         """
+        logger.debug(f"run(repo_name={repo_name}, commit_sha={commit_sha}, py_cap_minor={py_cap_minor}, max_rounds={max_rounds})")
+
         # Import here to avoid requiring SDK at module level
         try:
             from claude_agent_sdk import ClaudeSDKClient, ClaudeAgentOptions
         except ImportError:
             return Decision(Status.REFUSE, "Claude SDK not available", None, {})
+
+        logger.debug("")
 
         # Format initial prompt
         repo_task = task_tpl.format(
@@ -229,7 +244,7 @@ class ClaudeRepoAgent:
         options = ClaudeAgentOptions(
             system_prompt=system_prompt(),
             allowed_tools=["Glob", "Grep", "Read"],
-            permission_mode="denyEdits",
+            permission_mode="plan",
             cwd=str(self.repo_path),
             model=self.model
         )

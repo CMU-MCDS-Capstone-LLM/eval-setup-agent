@@ -52,5 +52,5 @@ RUN --mount=type=cache,target=/home/${APP_USER}/.cache/pip \
       true'
 
 WORKDIR {{ test_workdir }}
-{%- set _cmd = (test_cmd | default(["python","-m","pytest"])) %}
+{% set _cmd = (test_cmd | default(["python","-m","pytest"])) %}
 CMD {{ _cmd | tojson }}

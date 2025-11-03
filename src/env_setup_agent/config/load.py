@@ -7,13 +7,12 @@ from typing import Optional, Dict, Any
 from .model import Config, AgentConfig, PathConfig
 
 
-def load_from_yaml(config_path: Path, repo_root: Optional[Path] = None) -> Config:
+def load_from_yaml(config_path: Path) -> Config:
     """
     Load configuration from YAML file.
 
     Args:
         config_path: Path to YAML config file
-        repo_root: Optional repository root for resolving relative paths
 
     Returns:
         Config instance with values from YAML
@@ -30,10 +29,6 @@ def load_from_yaml(config_path: Path, repo_root: Optional[Path] = None) -> Confi
 
     if not isinstance(data, dict):
         raise ValueError("Config must be a YAML dictionary")
-
-    # Determine repo root for resolving relative paths
-    if repo_root is None:
-        repo_root = config_path.parent
 
     # Parse agent config
     agent_data = data.get("agent", {})
@@ -53,7 +48,7 @@ def load_from_yaml(config_path: Path, repo_root: Optional[Path] = None) -> Confi
             path_str = default
         path = Path(path_str)
         if not path.is_absolute():
-            path = repo_root / path
+            raise RuntimeError(f"Path must be absolute. Instead, got {path_str}")
         return str(path.resolve())
 
     path_config = PathConfig(
