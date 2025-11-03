@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "env-setup-agent"
+version = "0.1.0"
+description = "AI agent for generating Docker environments for Python repositories"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "claude-agent-sdk>=0.1.0",
+    "jinja2>=3.1.0",
+    "jsonschema>=4.0.0",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "black>=23.0.0",
+    "mypy>=1.0.0",
+]
+
+[project.scripts]
+env-setup-agent = "env_setup_agent.cli:main"
+env-setup-agent-from-config = "env_setup_agent.run_from_config:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.black]
+line-length = 120
+target-version = ["py311"]
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true

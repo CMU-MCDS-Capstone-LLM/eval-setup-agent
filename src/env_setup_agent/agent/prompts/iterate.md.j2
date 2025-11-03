@@ -1,0 +1,14 @@
+PREVIOUS VARIABLES
+```json
+{{ previous_vars_json }}
+```
+
+UPDATE (build/run logs, tails)
+
+=== BUILD LOG ===
+{{ build_log_tail }}
+
+=== RUN LOG ===
+{{ run_log_tail }}
+
+Return ONLY the revised JSON per the same contract. If policy is violated, set status="refuse" with reason & evidence.

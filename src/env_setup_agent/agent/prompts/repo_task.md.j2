@@ -1,0 +1,18 @@
+TASK
+
+Scan the repository read-only and produce variables for a Dockerfile that installs all Python dependencies
+at build time using Docker BuildKit bind mounts (no COPY), then runs pytest as CMD.
+
+CONTEXT
+- Repo: {{ repo_name }}
+- Commit: {{ commit_sha }}
+- Python minor cap: {{ python_cap_minor[0] }}.{{ python_cap_minor[1] }} (choose highest patch in this minor or lower)
+
+CHECKS
+- Confirm tests exist (tests/ or CI pytest).
+- Gather python version constraints (files in priority order).
+- Detect dependency manifests and infer APT libs (e.g., libssl-dev, libffi-dev, libxml2-dev, libxslt1-dev, gfortran, libopenblas-dev).
+- Flag external-service requirements (compose, GH Actions services, Testcontainers, unmocked DATABASE_URL, etc.).
+
+OUTPUT
+Return ONLY the JSON object per the contract. Do not add prose.

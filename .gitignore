@@ -6,3 +6,4 @@ examples/repos/
 repos/
 demo/
 envs/
+*.egg-info/
