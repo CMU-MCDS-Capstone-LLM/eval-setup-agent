@@ -11,7 +11,6 @@ class RepoSpec:
     env_id: str
     repo_name: str        # org/repo
     commit_sha: str
-    commit_ts_iso: str
     repo_path: str        # data/repos/<env_id>
     env_dir: str          # data/envs/<env_id>
 

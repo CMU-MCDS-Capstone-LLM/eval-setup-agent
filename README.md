@@ -1,8 +1,10 @@
 ## TODO
 
-- [ ] Generate run.sh and build.sh separately
-
 - [ ] Make the prompt more detailed to avoid unneeded failure
+
+  We need to expand and tune the prompt based on our old ones. Check out [the common prompting techniques](https://www.promptingguide.ai/techniques)
+
+- [x] Generate run.sh and build.sh separately
 
 - [x] Don't copy the repo into image. Instead map it to the image
 
@@ -206,12 +208,10 @@ data/
 │       ├── Dockerfile      # Generated Dockerfile
 │       ├── run_instructions.sh
 │       ├── decision.json
+│       ├── build.log
+│       ├── run.log
 │       ├── summary.md
 │       └── _SUCCESS or _FAILURE
-├── trajectories/
-│   └── <env_id>/
-│       ├── build.log
-│       └── run.log
 └── prompts/
     └── <env_id>/
         └── prompt.md       # Optional: full prompt sent to agent
@@ -353,7 +353,7 @@ The agent may fail due to API rate limits. In this case, the generation aborts w
 
 ### Missing system packages
 
-If builds fail with missing system libraries, the agent should detect and add them in subsequent rounds. Check `data/trajectories/<env_id>/build.log` for details.
+If builds fail with missing system libraries, the agent should detect and add them in subsequent rounds. Check `data/envs/<env_id>/build.log` for details.
 
 ## Development
 

@@ -39,7 +39,6 @@ def load_repo_spec(config_path: Path) -> RepoSpec:
     env_id = repo_data["env_id"]
     repo_name = repo_data["repo_name"]
     commit_sha = repo_data["commit_sha"]
-    commit_date = repo_data["commit_date"]
 
     repo_path = Path(repo_data["repo_path"])
     env_dir = Path(repo_data["env_dir"])
@@ -51,7 +50,6 @@ def load_repo_spec(config_path: Path) -> RepoSpec:
         env_id=env_id,
         repo_name=repo_name,
         commit_sha=commit_sha,
-        commit_ts_iso=commit_date,
         repo_path=str(repo_path.resolve()),
         env_dir=str(env_dir.resolve())
     )
@@ -76,10 +74,10 @@ async def run_from_config(config_path: Path) -> int:
     try:
         # Load configuration
         config = load_from_yaml(config_path)
-        spec = load_repo_spec(config_path)
+        repo_spec = load_repo_spec(config_path)
 
         # Setup logging
-        env_dir = Path(spec.env_dir)
+        env_dir = Path(repo_spec.env_dir)
         log_file = env_dir / "env_setup_agent.log"
         setup_logging(log_file=log_file, level=logging.DEBUG)
 
@@ -89,19 +87,17 @@ async def run_from_config(config_path: Path) -> int:
         logger.info(f"Running env_setup_agent from config: {config_path}")
 
         # Validate repo path exists
-        repo_path = Path(spec.repo_path)
+        repo_path = Path(repo_spec.repo_path)
         if not repo_path.exists():
             logger.error(f"Repository path not found: {repo_path}")
             return 1
 
         # Determine Python version cap from commit date
         commit_info_fetcher = CommitInfoFetcher(os.getenv("GITHUB_TOKEN"))
-        python_cap = commit_info_fetcher.infer_python_upper_bound_for_repo(spec.repo_name, spec.commit_sha)
-        logger.info(f"Python version cap for commit {spec.repo_name} @ {spec.commit_sha}: {python_cap[0]}.{python_cap[1]}")
+        python_cap = commit_info_fetcher.infer_python_upper_bound_for_repo(repo_spec.repo_name, repo_spec.commit_sha)
+        logger.info(f"Python version cap for commit {repo_spec.repo_name} @ {repo_spec.commit_sha}: {python_cap[0]}.{python_cap[1]}")
 
         # Get paths from config
-        # prompts_dir = Path(config.paths.prompts_dir)
-        # templates_dir = Path(config.paths.templates_dir)
         prompts_dir = Path(config.paths.prompts_dir).resolve()
         templates_dir = Path(config.paths.templates_dir).resolve()
         data_root = Path(config.paths.data_root)
@@ -110,9 +106,11 @@ async def run_from_config(config_path: Path) -> int:
         logger.info(f"Templates directory: {templates_dir}")
         logger.info(f"Data root: {data_root}")
 
+        breakpoint()
+
         # Run generation
         decision = await run_one(
-            spec=spec,
+            spec=repo_spec,
             python_cap_minor=python_cap,
             prompts_dir=prompts_dir,
             templates_dir=templates_dir,
@@ -127,7 +125,8 @@ async def run_from_config(config_path: Path) -> int:
         if decision.status.value == "proceed":
             logger.info(f"✓ SUCCESS: Environment generated at {env_dir}")
             logger.info(f"  Dockerfile: {env_dir / 'Dockerfile'}")
-            logger.info(f"  Run script: {env_dir / 'run_instructions.sh'}")
+            logger.info(f"  Build script: {env_dir / 'build.sh'}")
+            logger.info(f"  Run script: {env_dir / 'run.sh'}")
             logger.info(f"  Log file: {log_file}")
         else:
             logger.warning(f"✗ REFUSED: {decision.reason}")

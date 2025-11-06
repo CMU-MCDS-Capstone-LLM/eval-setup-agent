@@ -27,7 +27,7 @@ def docker_build(
         BuildResult with success status and log path
     """
     dockerfile = env_dir / "Dockerfile"
-    log_path = env_dir.parent.parent / "trajectories" / env_dir.name / "build.log"
+    log_path = env_dir / "build.log"
     log_path.parent.mkdir(parents=True, exist_ok=True)
 
     cmd = f"docker build -f {shlex.quote(str(dockerfile))} -t {shlex.quote(image_tag)} {shlex.quote(str(data_root))}"

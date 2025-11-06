@@ -75,10 +75,6 @@ def map_decision(obj: Dict[str, Any]) -> Decision:
 
 # Prompt assembly
 
-def system_prompt() -> str:
-    """Get the system prompt."""
-    return "You are EnvSetupAgent. Output ONLY a single JSON object that matches the provided contract. Read-only access."
-
 
 def assemble_initial_user(repo_task: str, policy: str, contract_json: str) -> str:
     """
@@ -201,10 +197,11 @@ class ClaudeRepoAgent:
         commit_sha: str,
         py_cap_minor: Tuple[int, int],
         build_and_test_cb: Callable[[DockerVars], Awaitable[Tuple[bool, str, str, str]]],
+        system_txt: str,
+        task_tpl: str,
+        policy_txt: str,
+        contract_json: str,
         max_rounds: int = 3,
-        task_tpl: str = "",
-        policy_txt: str = "",
-        contract_json: str = ""
     ) -> Decision:
         """
         Run agent with iteration.
@@ -242,7 +239,8 @@ class ClaudeRepoAgent:
 
         # Configure client
         options = ClaudeAgentOptions(
-            system_prompt=system_prompt(),
+            # TODO: Use the provided system.md instead
+            system_prompt=system_txt,
             allowed_tools=["Glob", "Grep", "Read"],
             permission_mode="plan",
             cwd=str(self.repo_path),

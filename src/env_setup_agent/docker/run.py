@@ -27,7 +27,7 @@ def docker_run(
         Tuple of (return_code, log_path, status)
         status is "ok" or "timeout"
     """
-    log_path = env_dir.parent.parent / "trajectories" / env_dir.name / "run.log"
+    log_path = env_dir / "run.log"
     log_path.parent.mkdir(parents=True, exist_ok=True)
 
     cmd = [

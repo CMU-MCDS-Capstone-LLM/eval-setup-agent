@@ -5,6 +5,7 @@ import logging
 from dataclasses import asdict
 from pathlib import Path
 from typing import Tuple
+from jinja2 import Template
 
 from .core.models import RepoSpec, Decision, DockerVars
 from .core.enums import Status
@@ -13,7 +14,7 @@ from .templating.jinja_env import make_env
 from .docker.build import docker_build
 from .docker.run import docker_run
 from .docker.classify import classify_run_returncode
-from .docker.instructions import write_run_instructions
+from .docker.instructions import write_build_and_run_scripts
 from .agent.claude_runner import ClaudeRepoAgent
 
 logger = logging.getLogger("env_setup_agent")
@@ -81,22 +82,21 @@ async def run_one(
     repo_task_tpl_path = prompts_dir / "repo_task.md.j2"
 
     logger.debug(f"Loading prompts from {prompts_dir}")
-    system = system_md.read_text() if system_md.exists() else ""
-    policy = policy_md.read_text() if policy_md.exists() else ""
-    contract = contract_json_path.read_text() if contract_json_path.exists() else "{}"
+    assert(system_md.exists(), "Can proceed without a provided system prompt.")
+    assert(policy_md.exists(), "Can proceed without a provided policy prompt.")
+    assert(contract_json_path.exists(), "Can proceed without a provided contract json.")
+    assert(repo_task_tpl_path.exists(), "Can proceed without a provided repo task template prompt.")
 
-    # Load and render task template
-    if repo_task_tpl_path.exists():
-        from jinja2 import Template
-        task_tpl_content = repo_task_tpl_path.read_text()
-        task_tpl = Template(task_tpl_content)
-        repo_task = task_tpl.render(
-            repo_name=spec.repo_name,
-            commit_sha=spec.commit_sha,
-            python_cap_minor=python_cap_minor
-        )
-    else:
-        repo_task = f"Repo: {spec.repo_name}, Commit: {spec.commit_sha}"
+    system_txt = system_md.read_text() 
+    policy_txt = policy_md.read_text()
+    contract = contract_json_path.read_text()
+    task_tpl_content = repo_task_tpl_path.read_text()
+    task_tpl = Template(task_tpl_content)
+    repo_task = task_tpl.render(
+        repo_name=spec.repo_name,
+        commit_sha=spec.commit_sha,
+        python_cap_minor=python_cap_minor
+    )
 
     # Create agent
     logger.info("Initializing Claude agent")
@@ -213,10 +213,11 @@ async def run_one(
         commit_sha=spec.commit_sha,
         py_cap_minor=python_cap_minor,
         build_and_test_cb=build_and_test_cb,
-        max_rounds=max_rounds,
+        system_txt=system_txt,
         task_tpl=repo_task,
-        policy_txt=policy,
-        contract_json=contract
+        policy_txt=policy_txt,
+        contract_json=contract,
+        max_rounds=max_rounds,
     )
 
     logger.info(f"Agent completed with status: {decision.status.value}")
@@ -238,14 +239,14 @@ async def run_one(
 
     # Write run instructions
     mount_dir = decision.variables.mount_dir if decision.variables else "/workspace"
-    write_run_instructions(
+    write_build_and_run_scripts(
         env_dir,
         f"envsetup/{spec.env_id}:tests",
         data_root,
         mount_dir,
         spec.env_id
     )
-    logger.debug(f"Wrote run_instructions.sh to {env_dir}")
+    logger.debug(f"Wrote build.sh and run.sh to {env_dir}")
 
     # Write summary
     write_summary(env_dir, spec, decision)
