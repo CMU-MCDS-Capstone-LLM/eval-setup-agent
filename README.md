@@ -1,3 +1,205 @@
+# Environment Setup Agent
+
+AI-powered agent that automatically generates Docker test environments for Python repositories. Analyzes codebases using Claude AI to determine dependencies, Python versions, and test configurations, then produces working Dockerfiles and scripts.
+
+## Overview
+
+The agent scans a Python repository and generates:
+
+- Dockerfile with correct Python version and dependencies
+- Build and run scripts for testing
+- Iteratively fixes build/runtime errors until tests run successfully
+
+**Key capabilities:**
+
+- Detects tests, dependencies, and required system packages
+- Infers Python version from commit date and project constraints
+- Self-corrects through multiple build/test iterations (max 3 rounds)
+- Provides evidence-based decisions with full traceability
+
+## Installation
+
+**Prerequisites:** Python 3.11+, Docker, GitHub token
+
+```bash
+pip install -e .
+
+export GITHUB_TOKEN="your_github_token"
+```
+
+## Usage
+
+**1. Create a config file** (`config.yaml`):
+
+```yaml
+repository:
+  env_id: "org_repo__commit_hash"
+  repo_name: "org/repo"
+  commit_sha: "full_commit_sha"
+  repo_path: "/absolute/path/to/repo"
+  env_dir: "/absolute/path/to/output"
+
+agent:
+  model: null  # defaults to claude-sonnet-4-5
+  max_rounds: 3
+  build_timeout_s: 1800
+  run_timeout_s: 1800
+```
+
+**2. Run the agent:**
+
+```bash
+env-setup-agent config.yaml
+```
+
+**3. Check outputs:**
+
+```bash
+ls /path/to/output/
+# Dockerfile, build.sh, run.sh, decision.json, summary.md, _SUCCESS
+```
+
+## Output Structure
+
+```
+env_dir/
+├── Dockerfile              # Generated Docker environment
+├── build.sh                # Build script (executable)
+├── run.sh                  # Test execution script (executable)
+├── decision.json           # Agent's decision and variables
+├── summary.md              # Human-readable summary
+├── env_setup_agent.log     # Detailed execution log
+├── _SUCCESS or _FAILURE    # Status marker
+└── iterations/             # Per-iteration artifacts
+    └── round_N/
+        ├── decision.json, Dockerfile, build.sh, run.sh
+        ├── build.log, run.log
+        └── result.json
+```
+
+## How It Works
+
+1. **Analysis**: Claude agent scans repository (read-only) to identify tests, dependencies, Python constraints
+2. **Generation**: Produces `DockerVars` JSON with python version, apt packages, pip deps, test command
+3. **Build & Test**: Renders Dockerfile, builds image, runs tests
+4. **Iteration**: If failures occur, agent analyzes logs and refines variables (up to max_rounds)
+5. **Output**: Saves final artifacts or refuses with reason
+
+**Agent decisions:**
+
+- `PROCEED`: Provides complete variables to generate environment
+- `REFUSE`: Declines with reason (no tests, external services required, policy violation, etc.)
+
+## Decision JSON Schema
+
+```json
+{
+  "status": "proceed" | "refuse",
+  "reason": "optional explanation",
+  "evidence": {
+    "tests_exist": ["found pytest in tests/ directory"],
+    "python_version_constraints": ["CI tests Python 3.8"],
+    "dependency_manifests": ["requirements.txt found"]
+  },
+  "variables": {
+    "python_version_tag": "3.9.19-slim",
+    "test_worksubdir": ".",
+    "project_apt_packages": ["gcc", "libssl-dev", "libffi-dev"],
+    "env_vars": {"SQL_SERVER": "sqlite"},
+    "pip_deps": ["-r requirements.txt", "-r requirements-dev.txt"],
+    "install_editable": true,
+    "pip_loc_e_dep": ".[extras]",
+    "test_cmd": ["pytest", "-v", "tests"]
+  }
+}
+```
+
+## Configuration Reference
+
+**Repository fields** (all required, absolute paths):
+
+- `env_id`: Unique identifier
+- `repo_name`: GitHub `org/repo` format
+- `commit_sha`: Full commit hash
+- `repo_path`: Cloned repository location
+- `env_dir`: Output directory
+
+**Agent fields** (optional):
+
+- `model`: Claude model (default: `claude-sonnet-4-5-20250929`)
+- `max_rounds`: Max iterations (default: 3)
+- `build_timeout_s`: Build timeout (default: 1800)
+- `run_timeout_s`: Test timeout (default: 1800)
+
+**Environment fields** (optional):
+
+- `app_user`: Docker user (default: `appuser`)
+- `mount_dir`: Container mount point (default: `/workspace`)
+
+**Custom templates** (optional):
+
+```yaml
+paths:
+  system_prompt_path: "/path/to/system.md"
+  dockerfile_tpl_path: "/path/to/dockerfile.template.j2"
+  # ... other paths (see src/env_setup_agent/resources/configs/)
+```
+
+## Example
+
+See `demo/new-example/` for a complete working example:
+
+```bash
+./demo/new-example/run_example.sh
+```
+
+Example output at: `demo/new-example/envs/alice-biometrics_petisco__*/`
+
+## Project Structure
+
+```
+src/env_setup_agent/
+├── cli.py                  # CLI entry point
+├── runflow.py              # Main orchestration
+├── agent/claude_runner.py  # Claude SDK integration
+├── core/                   # Models, schema, enums
+├── docker/                 # Build/run/classify
+├── templating/             # Jinja2 rendering
+├── config/                 # Config loading
+├── adapters/               # GitHub API, etc.
+└── resources/configs/      # Default prompts & templates
+```
+
+## Development
+
+```bash
+# Install dev dependencies
+pip install -e ".[dev]"
+
+# Run tests
+pytest tests/
+
+# Format code
+ruff format .
+ruff check .
+```
+
+## Troubleshooting
+
+| Issue | Solution |
+|-------|----------|
+| Build timeout | Increase `build_timeout_s` in config |
+| Agent refuses | Check `decision.json` and logs for refusal reason |
+| Build failures | Examine `iterations/round_N/build.log` |
+| Missing token | Set `GITHUB_TOKEN` environment variable |
+
+## Dependencies
+
+- **claude-agent-sdk** - Claude AI integration
+- **jinja2** - Template rendering
+- **jsonschema** - Validation
+- **pyyaml** - Config parsing
+
 ## TODO
 
 - [ ] Run same repo multiple time, and expect all runs to succeed. If one failed, check why.
@@ -26,7 +228,7 @@
 
 - [ ] Add an abstraction of the generated env (like pymigbench's Migration class), so that it's easier to integrate into pipeline
 
-- [ ] Format python code, and autoformat in lazyvim
+- [x] Format python code, and autoformat in lazyvim
 
 - [x] don't use separate variables `test_workdir`, `mount_dir`. Assume test runs in subfolder relative to repo root. Thus, agent only supplies a decision of `test_worksubdir`, and we manually join it with `mount_dir`
 
@@ -96,390 +298,3 @@
 - [x] Read through testing agent codebase
 
 - [x] Read through coding agent codebase
-
-## How to set up environment to run evaluation on PyMigBench?
-
-There are two pain points
-
-1. Unlike SWE-Bench, PyMigBench doesn't give instruction on how to set up env for each data point.
-
-2. Testing agent and coding agent need to use the same environment, so we must make the env into a docker image or dockerfile somehow.
-
-## Prereq knowledge
-
-### Test only on subset of PyMigBench
-
-We won't be testing on all data points in PyMigBench, and we assume this in the rest of this doc unless specified. In specific, we only consider repos with the following properties
-
-- The repo must have at least one unit test, since that allows us to test if the env is set up correctly, however minimal the test is.
-
-  This is around 2/3 of the benchmark.
-
-But we will provide a better way to set up environment. The original pymigbench paper's env discovery method only successfully set up env for 46 migrations
-
-### What counts as env setup?
-
-We will automatically set up the following dependencies for each repo in PyMigBench
-
-1. Python intepreter
-
-  e.g. python 3.11, python 2.7
-
-2. System packages
-
-  e.g. postgresql
-
-3. Python packages
-
-  e.g. Flask
-
-Note that these dependencies doesn't count
-
-- platform: we assume linux x86_64, the most common one.
-
-### What counts as successful env setup?
-
-For each repo in PyMigBench, we assume env setup is successful if the following two conditions are met
-
-- installation of the dependencies raise no error (or error is fixed)
-
-- existing unit tests in the repo runs successfully on multiple runs
-
-  we require multiple runs to avoid flakiness, where ephemeral failure happens.
-
-## Env setup process
-
-### Env discovery
-
-The original pymigbench paper already proposes a heuristic algo to discover these dependencies
-
-- Python version
-
-- System packages
-
-However, the way python version is discovered doesn't make use of codebase content (e.g. one that hide in docker file), and system packages is ignored entirely, meaning projects such one those depending on external local database setup won't work.
-
-We will combine llm and heuristic algo to discover env smartly, using either a workflow or agent to discover all three types of dependencies mentioned above.
-
-### Env installtion & testing
-
-We will start with a minimal linux docker image, either on ec2 or on local laptop, in which our algorithm will set up environment.
-
-We will install the discovered env, run the tests with pytest, and iterate based on error log if any.
-
-**What count as failed to setup**: We require the env installation to be completed with a given cost / step / token consumption, and consider env setup as failed if exceeding such threshold.
-
-### Env saving & reusing
-
-To save env, we will export the environment into a docker image.
-
-To reuse env, we will upload the docker image to a single ECR repo, and use tags to differentiate images for diff data points. Since full eval on pymigbench will be conducted on AWS EC2 instances, we can simply pull from ECR to reuse the env with no cost (assume same region).
-
-> Note that this does **requires all AWS services to be in the same region**. We will use **us-east-2** for experiment.
-
-We can customize SWE Agent to start from existing docker image.
-
-## Notes
-
-- We must **run all aws services within the same region**. We will use **us-east-2** for experiment.
-
-- dependencies added by migration is not installed. For example, if we migrate from pandas to polors, we will only install pandas, and not polors. Our coding agent is expected to install such dependencies as it performs migration.
-
-# env_setup_agent
-
-AI agent for generating reproducible Docker environments for Python repositories.
-
-## Overview
-
-`env_setup_agent` uses Claude Agent SDK to automatically generate Dockerfiles for Python projects. The agent:
-
-1. Scans repositories (read-only) to detect tests, dependencies, and constraints
-2. Generates validated JSON variables for a fixed Dockerfile template
-3. Builds the image using BuildKit with bind-mounted dependencies
-4. Iterates on failures (build/test logs) until success or limits
-
-## Features
-
-- **Template-based**: Uses Jinja2 templates, not freeform Dockerfile generation
-- **Read-only scanning**: Agent can only read files, not modify them
-- **BuildKit optimization**: Bind-mounts repo during build for fast iterations
-- **Iterative refinement**: Agent adjusts based on build/test logs
-- **Deterministic outputs**: Success writes Dockerfile + run script + summary
-
-## Installation
-
-```bash
-cd env_setup_agent
-pip install -e .
-```
-
-### Prerequisites
-
-- Python ≥ 3.11
-- Docker with BuildKit support
-- Claude API key (if required): `export CLAUDE_API_KEY=...`
-  You can also the claude code cli with monthly pro subscription. The python sdk will communicate to the cli internally. This avoid using API and makes the cost more controllable (20 USD per month), at the cost of more rate-limiting
-
-## Usage
-
-### Command-line interface
-
-```bash
-# Scan a repository
-env-setup-agent scan /path/to/repo
-
-# Generate environment for a single repo
-env-setup-agent generate \
-  my-env-id \
-  org/repo \
-  abc123def \
-  2024-01-15T12:00:00Z \
-  --data-root data \
-  --model claude-sonnet-4 \
-  --max-rounds 3
-
-# List all repositories
-env-setup-agent list --data-root data
-
-# Process all repositories in data/repos
-env-setup-agent all --data-root data --skip-existing
-```
-
-### Python API
-
-```python
-import asyncio
-from pathlib import Path
-from env_setup_agent.core.models import RepoSpec
-from env_setup_agent.runflow import run_one
-
-spec = RepoSpec(
-    env_id="myrepo__abc123",
-    repo_name="org/myrepo",
-    commit_sha="abc123",
-    commit_ts_iso="2024-01-15T12:00:00Z",
-    repo_path="data/repos/myrepo__abc123",
-    env_dir="data/envs/myrepo__abc123"
-)
-
-decision = asyncio.run(run_one(
-    spec=spec,
-    python_cap_minor=(3, 11),
-    prompts_dir=Path("src/env_setup_agent/agent/prompts"),
-    templates_dir=Path("src/env_setup_agent/templating"),
-    data_root=Path("data"),
-    model=None,  # Use default
-    max_rounds=3
-))
-
-if decision.status.value == "proceed":
-    print(f"Success! Dockerfile at {spec.env_dir}/Dockerfile")
-else:
-    print(f"Refused: {decision.reason}")
-```
-
-## Directory Structure
-
-After running, you'll have:
-
-```
-data/
-├── repos/
-│   └── <env_id>/           # Cloned repository
-├── envs/
-│   └── <env_id>/
-│       ├── Dockerfile      # Generated Dockerfile
-│       ├── run_instructions.sh
-│       ├── decision.json
-│       ├── build.log
-│       ├── run.log
-│       ├── summary.md
-│       └── _SUCCESS or _FAILURE
-└── prompts/
-    └── <env_id>/
-        └── prompt.md       # Optional: full prompt sent to agent
-```
-
-## Configuration
-
-Set environment variables to configure:
-
-```bash
-export ESA_MODEL="claude-sonnet-4"
-export ESA_MAX_ROUNDS=3
-export ESA_BUILD_TIMEOUT=1800  # seconds
-export ESA_RUN_TIMEOUT=1800
-export ESA_DATA_ROOT="data"
-export ESA_PROMPTS_DIR="src/env_setup_agent/agent/prompts"
-export ESA_TEMPLATES_DIR="src/env_setup_agent/templating"
-```
-
-## How It Works
-
-### 1. Detection Phase
-
-The agent scans the repository to gather facts:
-
-- Test files and directories
-- Python version constraints (pyproject.toml, setup.py, etc.)
-- Dependency manifests (requirements.txt, pyproject.toml, etc.)
-- Required system packages (inferred from Python deps)
-- External service indicators (docker-compose, GitHub Actions services, etc.)
-
-### 2. Generation Phase
-
-Claude Agent SDK (with read-only tools: Glob, Grep, Read) analyzes the repo and outputs JSON:
-
-```json
-{
-  "status": "proceed",
-  "variables": {
-    "python_version_tag": "3.11.8-slim",
-    "mount_dir": "/workspace",
-    "repo_bind_src": "repos/myrepo__abc123",
-    "test_workdir": "/workspace",
-    "app_user": "appuser",
-    "project_apt_packages": ["libssl-dev", "libffi-dev"],
-    "env_vars": {"PYTHONUNBUFFERED": "1"},
-    "pip_deps": ["-r requirements.txt", "pytest"],
-    "install_editable": true,
-    "test_cmd": ["python", "-m", "pytest"]
-  }
-}
-```
-
-### 3. Build Phase
-
-The Dockerfile template is rendered with these variables using BuildKit:
-
-```dockerfile
-# syntax=docker/dockerfile:1.7
-FROM python:3.11.8-slim
-
-RUN --mount=type=bind,source=repos/myrepo__abc123,target=/workspace,rw \
-    cd /workspace && \
-    pip install -r requirements.txt && \
-    pip install -e .
-```
-
-### 4. Test Phase
-
-The built image runs `pytest` with the repo mounted at the same path.
-
-### 5. Iteration
-
-If build or tests fail with dependency errors, the agent receives logs and can revise the JSON. This continues for up to `max_rounds`.
-
-## Policy
-
-The agent follows these rules:
-
-- **Proceed** only if tests can run with Python interpreter + deps + system libs
-- **Refuse** if:
-  - No tests found
-  - External services required (unless tests self-spawn/mock them)
-- No virtualenvs or services in Dockerfile
-- Base image: `python:X.Y-slim` where X.Y ≤ detected upper bound
-
-## Constraints
-
-- Requires Docker BuildKit (`DOCKER_BUILDKIT=1`)
-- Repo must be pre-cloned under `data/repos/<env_id>`
-- Repo will be mounted at the same path during build and runtime
-- Python 3 projects only
-- Agent has read-only access (Glob, Grep, Read tools)
-
-## Example: Single Repository
-
-```bash
-# 1. Clone repo
-git clone https://github.com/org/myrepo data/repos/myrepo__abc123
-cd data/repos/myrepo__abc123
-git checkout abc123
-cd ../../..
-
-# 2. Generate environment
-env-setup-agent generate \
-  myrepo__abc123 \
-  org/myrepo \
-  abc123 \
-  2024-01-15T12:00:00Z
-
-# 3. Review output
-cat data/envs/myrepo__abc123/summary.md
-
-# 4. Run tests manually
-bash data/envs/myrepo__abc123/run_instructions.sh
-```
-
-## Troubleshooting
-
-### Claude SDK not available
-
-If you see "Claude SDK not available", install it:
-
-```bash
-pip install claude-agent-sdk
-```
-
-### Build timeout
-
-Increase timeout:
-
-```bash
-export ESA_BUILD_TIMEOUT=3600  # 1 hour
-```
-
-### Rate limiting
-
-The agent may fail due to API rate limits. In this case, the generation aborts without saving artifacts. Retry after a delay.
-
-### Missing system packages
-
-If builds fail with missing system libraries, the agent should detect and add them in subsequent rounds. Check `data/envs/<env_id>/build.log` for details.
-
-## Development
-
-### Running tests
-
-```bash
-pip install -e ".[dev]"
-pytest tests/
-```
-
-### Code formatting
-
-```bash
-black src/ tests/
-```
-
-### Type checking
-
-```bash
-mypy src/
-```
-
-## Architecture
-
-See the design document for detailed architecture and code structure.
-
-Key components:
-
-- `core/`: Data models, enums, schema validation
-- `config/`: Configuration management
-- `detect/`: Repository scanning (tests, deps, versions)
-- `agent/`: Claude Agent SDK integration with prompts
-- `templating/`: Jinja2 Dockerfile template
-- `docker/`: Build, run, classify operations
-- `io/`: Filesystem and logging utilities
-- `adapters/`: External integrations (GitHub, clock)
-- `runflow.py`: Main controller
-- `cli.py`: Command-line interface
-
-## License
-
-See LICENSE file.
-
-## Contributing
-
-Contributions welcome! Please open an issue or PR.
