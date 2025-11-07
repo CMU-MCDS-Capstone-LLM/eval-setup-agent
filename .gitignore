@@ -6,4 +6,5 @@ examples/repos/
 repos/
 demo/
 envs/
+!notes/dockerfile-exp/envs
 *.egg-info/

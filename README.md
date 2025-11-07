@@ -1,5 +1,7 @@
 ## TODO
 
+- [ ] Manually review 7 successful repo env setups, and 7 failed repo env setup
+
 - [ ] Make the prompt more detailed to avoid unneeded failure
 
   We need to expand and tune the prompt based on our old ones. Check out [the common prompting techniques](https://www.promptingguide.ai/techniques)
@@ -40,6 +42,8 @@
     bash -lc "pip install -e .[fixtures,rabbitmq,pymongo,elastic,sqlalchemy,fastapi,slack,redis,flask] && python -m pytest"
   ```
 
+  You CAN pip install locally during build time by switching to ROOT user. However, you shouldn't do that. This is because the installation at build time will generate an `<xxx>.egg.info` folder under the repo. However, at runtime, we may map into the container a fresh copy of the repo on host at a different location than the one used in build time, meaning metadata like `<xxx>.egg.info` may not be present in the repo at runtime.
+
 - [x] The current dockerfile context is a bit too broad
 
   It use the entire data folder. This can be problem when we download multiple repos in the data folder, since docker build need to copy the entire context folder into its own workspace.
@@ -63,6 +67,8 @@
 - [x] Modularize the save to env folder and iteration folder logic, and reuse for dockerfile, build.sh, run.sh
 
 - [ ] Add an abstraction of the generated env (like pymigbench's Migration class), so that it's easier to integrate into pipeline
+
+- [ ] Run docker as app_user as well.
 
 - [x] Generate run.sh and build.sh separately
 
