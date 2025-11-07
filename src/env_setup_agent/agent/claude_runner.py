@@ -5,7 +5,7 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Callable, Awaitable
 
-from ..core.models import Decision, DockerVars
+from ..core.models import Decision, DockerVars, generate_dummy_decision
 from ..core.enums import Status
 from ..core import schema as schema_mod
 
@@ -64,6 +64,7 @@ def map_decision(obj: Dict[str, Any]) -> Decision:
             env_vars=v.get("env_vars", {}),
             pip_deps=v.get("pip_deps", []),
             install_editable=bool(v.get("install_editable", False)),
+            pip_loc_e_dep=v.get("pip_loc_e_dep"),
             test_cmd=v.get("test_cmd", ["python", "-m", "pytest"])
         )
 
@@ -246,6 +247,7 @@ class ClaudeRepoAgent:
 
         async with ClaudeSDKClient(options=options) as client:
             decision = await self._ask(client, user0)
+            # decision = generate_dummy_decision()
 
             if decision.status is Status.REFUSE:
                 return decision
@@ -265,6 +267,7 @@ class ClaudeRepoAgent:
                     run_tail[-32000:]
                 )
                 decision = await self._ask(client, user_iter)
+                # decision = generate_dummy_decision()
 
                 if decision.status is Status.REFUSE:
                     return decision

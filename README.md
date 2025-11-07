@@ -24,7 +24,7 @@
 
 - [x] Manually add pytest, pytest-cov, coverage as repo env deps
 
-- [ ] If `pip install -e .` is needed, let's do that in the run script instead of the build script.
+- [x] If `pip install -e .` is needed, let's do that in the run script instead of the build script.
 
   In build script, we bind-mount repo, install the dependencies
 
@@ -68,7 +68,7 @@
 
 - [ ] Add an abstraction of the generated env (like pymigbench's Migration class), so that it's easier to integrate into pipeline
 
-- [ ] Run docker as app_user as well.
+- [x] Run docker as app_user as well.
 
 - [x] Generate run.sh and build.sh separately
 

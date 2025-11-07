@@ -48,6 +48,7 @@ def render_and_save(output_paths: List[Path], templates_dir: Path, template_file
 async def run_one(
     spec: RepoSpec,
     python_cap_minor: Tuple[int, int],
+    env_id: str,
     prompts_dir: Path,
     templates_dir: Path,
     app_user: str,
@@ -137,7 +138,8 @@ async def run_one(
         logger.debug(f"Saved decision JSON to {decision_json_path}")
 
         # Define image tag for this iteration
-        tag = get_image_tag()
+        # TODO: Add env id
+        tag = get_image_tag(env_id)
 
         # Render Dockerfile
         logger.info("Rendering Dockerfile from template")
@@ -145,7 +147,8 @@ async def run_one(
         # Compute test_workdir from mount_dir + test_worksubdir
         dvars_dict = asdict(dvars)
         test_worksubdir = dvars_dict.pop('test_worksubdir')
-        test_workdir = os.path.join(mount_dir, test_worksubdir)
+        # test_workdir = os.path.join(mount_dir, test_worksubdir)
+        test_workdir = str((Path(mount_dir) / test_worksubdir).resolve())
 
         template_vars = {
             'app_user': app_user,
@@ -170,7 +173,6 @@ async def run_one(
             'env_dir': str(Path(spec.env_dir).absolute()),
             'image_tag': tag,
             'repo_path': str(Path(spec.repo_path).absolute()),
-            'mount_dir': mount_dir
         }
         render_and_save(
             [
@@ -182,8 +184,13 @@ async def run_one(
         )
         logger.info("Rendering run.sh from templates")
         run_script_vars = {
-            **build_script_vars
-            # TODO: Add more vars if needed
+            'repo_path': str(Path(spec.repo_path).absolute()),
+            'mount_dir': mount_dir,
+            'image_tag': tag,
+            'test_workdir': test_workdir,
+            'install_editable': dvars.install_editable,
+            'pip_loc_e_dep': dvars.pip_loc_e_dep,
+            'test_cmd': " ".join(dvars.test_cmd),
         }
         render_and_save(
             [

@@ -9,3 +9,4 @@ POLICY
 - If tests require actual running databases, message queues, or other services that are NOT mocked, you must refuse.
 - If a test is skipped, ignore it and don't refuse because of its content. This means, even if a skipped test violate any of the rule of a valid case (e.g. depending on external service), we won't refuse the generation because the test is skipped.
   - However, if all tests are skipped, refuse to generate.
+- Always prefer install from requirements files provided in the repo (e.g. `pip install -r requirements.txt`) over manually specify the packages (e.g. `pip install numpy==2.3.0`). Use manual method only when there exists package conflicts, and you must manually resolve it (since you can't modify the provided repo)

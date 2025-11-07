@@ -1,8 +1,11 @@
 # syntax=docker/dockerfile:1.7
 {#- REQUIRED:
    python_version_tag, mount_dir, test_workdir,
-   app_user, project_apt_packages, env_vars, pip_deps,
-   install_editable, test_cmd
+   app_user, project_apt_packages, env_vars, pip_deps, test_cmd
+
+   NOTE: install_editable is NO LONGER handled in the Dockerfile.
+   Editable installation now happens at runtime in run.sh before running tests,
+   since the repo is bind-mounted and cannot be reliably pip editable installed during build.
 #}
 
 ARG PYTHON_VERSION={{ python_version_tag }}
@@ -15,7 +18,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONUNBUFFERED=1 \
     LANG=C.UTF-8 \
     LC_ALL=C.UTF-8
-{%- for k, v in env_vars.items() %}
+{% for k, v in env_vars.items() %}
 ENV {{ k }}="{{ v }}"
 {%- endfor %}
 
@@ -24,7 +27,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
       build-essential pkg-config git ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-{%- if project_apt_packages and project_apt_packages|length > 0 %}
+{% if project_apt_packages and project_apt_packages|length > 0 %}
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     apt-get update && apt-get install -y --no-install-recommends \
 {%- for p in project_apt_packages %}
@@ -38,12 +41,10 @@ RUN useradd -m ${APP_USER} && mkdir -p {{ mount_dir }} && chown -R ${APP_USER}:$
 USER ${APP_USER}
 ENV XDG_CACHE_HOME=/home/${APP_USER}/.cache
 
-# Enforece installation of pytest, pytest-cov, coverage, so that testing agent can obtain coverage report of pytest
+# Separate step of upgrade pip for better caching
 RUN --mount=type=cache,target=/home/${APP_USER}/.cache/pip \
     bash -lc 'set -euo pipefail; \
       python -m pip install --upgrade pip; \
-      echo "+ pip install pytest pytest-cov coverage"; \
-      pip install pytest pytest-cov coverage; \
       true'
 
 # NOTE: The docker build context IS the repo root, so source is simply "."
@@ -55,10 +56,16 @@ RUN --mount=type=cache,target=/home/${APP_USER}/.cache/pip \
       echo "+ pip install {{ step }}"; \
       pip install {{ step }}; \
 {%- endfor %}
-{%- if install_editable %}
-      echo "+ pip install -e ."; \
-      pip install -e .; \
-{%- endif %}
+      true'
+
+# Enforce installation of pytest, pytest-cov, coverage, so that testing agent can obtain coverage report of pytest
+# Only install pytest, pytest-cov, coverage if original repo doesn't have it
+RUN --mount=type=cache,target=/home/${APP_USER}/.cache/pip \
+    bash -lc 'set -euo pipefail; \
+      echo "+ install pytest, pytest-cov, coverage only if not already installed"; \
+      python -c "import pytest" || { echo "+ pip install pytest" && pip install pytest; }; \
+      python -c "import pytest_cov" || { echo "+ pip install pytest-cov" && pip install pytest-cov; }; \
+      python -c "import coverage" || { echo "+ pip install coverage" && pip install coverage; }; \
       true'
 
 WORKDIR {{ test_workdir }}

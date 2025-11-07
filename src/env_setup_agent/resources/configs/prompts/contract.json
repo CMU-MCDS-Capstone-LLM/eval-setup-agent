@@ -61,7 +61,12 @@
           }
         },
         "install_editable": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Whether to install the repository as an editable package at runtime (before running tests)"
+        },
+        "pip_loc_e_dep": {
+          "type": "string",
+          "description": "If install_editable is true, the pip editable install argument (e.g., '.' or '.[extras,dev]'). Ignored if install_editable is false."
         },
         "test_cmd": {
           "type": "array",

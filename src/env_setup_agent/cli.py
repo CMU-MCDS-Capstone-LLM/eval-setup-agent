@@ -108,6 +108,7 @@ async def run_from_config(config_path: Path) -> int:
         decision = await run_one(
             spec=repo_spec,
             python_cap_minor=python_cap,
+            env_id=repo_spec.env_id,
             prompts_dir=prompts_dir,
             templates_dir=templates_dir,
             app_user=config.env.app_user,

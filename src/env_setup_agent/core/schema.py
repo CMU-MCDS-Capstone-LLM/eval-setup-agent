@@ -27,6 +27,7 @@ SCHEMA: Dict[str, Any] = {
                 "env_vars": {"type": "object", "additionalProperties": {"type": "string"}},
                 "pip_deps": {"type": "array", "items": {"type": "string"}},
                 "install_editable": {"type": "boolean"},
+                "pip_loc_e_dep": {"type": "string"},
                 "test_cmd": {"type": "array", "items": {"type": "string"}}
             },
             "additionalProperties": False

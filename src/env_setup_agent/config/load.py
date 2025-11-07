@@ -50,7 +50,7 @@ def load_from_yaml(config_path: Path) -> Config:
     # Resolve paths relative to repo_root if they're relative
     def resolve_path(path_str: str, default: str | Path) -> str:
         if not path_str:
-            path_str = default
+            path_str = str(default)
         path = Path(path_str)
         if not path.is_absolute():
             raise RuntimeError(f"Path must be absolute. Instead, got {path_str}")
@@ -67,10 +67,12 @@ def load_from_yaml(config_path: Path) -> Config:
         ),
     )
 
+    env_data = data.get("env", {})
+
     # Parse env config
     env_config = EnvConfig(
-        app_user=data["env"]["app_user"],
-        mount_dir=data["env"]["mount_dir"],
+        app_user=env_data.get("app_user", DEFAULT_APP_USER),
+        mount_dir=env_data.get("mount_dir", DEFAULT_MOUNT_DIR)
     )
 
     return Config(agent=agent_config, paths=path_config, env=env_config)

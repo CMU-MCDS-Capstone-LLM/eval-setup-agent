@@ -38,6 +38,7 @@ class DockerVars:
     env_vars: Dict[str, str]
     pip_deps: List[str]
     install_editable: bool
+    pip_loc_e_dep: Optional[str]
     test_cmd: List[str]
 
 
@@ -48,6 +49,27 @@ class Decision:
     reason: Optional[str]
     variables: Optional[DockerVars]
     evidence: Dict[str, List[str]] = field(default_factory=dict)
+
+def generate_dummy_decision() -> Decision:
+    status = Status.PROCEED
+    reason = None 
+    variables = DockerVars(
+        python_version_tag="3.11.13-slim",
+        test_worksubdir=".",
+        project_apt_packages=["libssl"],
+        env_vars={"MY_ENV_VAR": "foobar"},
+        pip_deps=["numpy", "pandas"],
+        install_editable=True,
+        pip_loc_e_dep=".[fixture]",
+        test_cmd=["python", "-m", "pytest"],
+    )
+    evidence = {}
+    return Decision(
+        status=status,
+        reason=reason,
+        variables=variables,
+        evidence=evidence
+    )
 
 
 @dataclass

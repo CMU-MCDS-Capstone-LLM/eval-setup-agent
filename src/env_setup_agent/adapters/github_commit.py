@@ -174,6 +174,9 @@ class CommitInfoFetcher:
         metadata = self._get_commit_metadata(repo, commit_sha)
         timestamp = self._get_commit_timestamp(repo, commit_sha)
         
+        if timestamp is None:
+            raise ValueError(f"Failed to get commit info for commit {commit_sha} in repo {repo}")
+
         result = self._infer_python_upper_bound(timestamp)
 
         if result is None:
@@ -184,7 +187,7 @@ class CommitInfoFetcher:
 if __name__ == "__main__":
     github_token = os.getenv("GITHUB_TOKEN")
     fetcher = CommitInfoFetcher(github_token)
-    print(fetcher.get_commit_info(
+    print(fetcher.infer_python_upper_bound_for_repo(
         repo="spacetelescope/pysynphot",
         commit_sha="5b80ada45d2eb5fcdcca8959d073713ab3e84c7b"
     ))

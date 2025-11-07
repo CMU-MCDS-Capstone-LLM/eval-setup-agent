@@ -27,9 +27,9 @@ def write_summary(env_dir: Path, spec: RepoSpec, decision: Decision) -> None:
 - Python base: {v.python_version_tag}
 - APT: {apt_list}
 - Pip plan: {pip_list}
-- Editable: {v.install_editable}
-- Mount path: {v.mount_dir}
-- Test workdir: {v.test_workdir}
+- Editable: {v.install_editable} {v.pip_loc_e_dep if v.install_editable else None}
+- Test worksubdir: {v.test_worksubdir}
+- Test cmd: {" ".join(v.test_cmd)}
 """
     else:
         evidence_lines = []
