@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple
 from .enums import Status, FailureReason
 
+# TODO: May need to define classmethod from_dict like what we did wiht EnvConfig
 
 @dataclass
 class RepoSpec:

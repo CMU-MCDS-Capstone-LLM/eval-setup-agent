@@ -1,6 +1,8 @@
 ## TODO
 
-- [ ] Manually review 7 successful repo env setups, and 7 failed repo env setup
+- [ ] > Sample 14 repos to generate, and manually review the successful and failed cases' env setup.
+
+  This is meant to explore more unexpected cases that our prompt failed to cover.
 
 - [ ] Make the prompt more detailed to avoid unneeded failure
 
@@ -20,7 +22,15 @@
       apt-get update && apt-get install -y --no-install-recommends \      build-essential \      libssl-dev \      libffi-dev \      libyaml-dev \    && rm -rf /var/lib/apt/lists/*
   ```
 
+- [x] Render all templates using the same env (StrictUndefined)
+
 - [ ] Need to show the agent the generated dockerfile, build.sh, and run.sh for better context
+
+  - [ ] Add more examples of
+    - external services
+    -
+
+- [ ] Add a comment on what's the current progress and next step, or why stucked, when failed due to max round exceeded
 
 - [x] Manually add pytest, pytest-cov, coverage as repo env deps
 

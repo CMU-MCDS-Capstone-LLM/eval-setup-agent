@@ -5,17 +5,16 @@ import logging
 from dataclasses import asdict
 from pathlib import Path
 from typing import List, Tuple
-from jinja2 import Template
 from pathlib import Path
-import os
 
-from env_setup_agent.const.docker import DEFAULT_DOCKER_BUILD_SCRIPT_TEMPLATE_FILENAME, DEFAULT_DOCKER_RUN_SCRIPT_TEMPLATE_FILENAME, DEFAULT_DOCKERFILE_TEMPLATE_FILENAME
+from env_setup_agent.config.model import PathConfig
 from env_setup_agent.docker import get_image_tag
 
 from .core.models import RepoSpec, Decision, DockerVars
 from .core.enums import Status
 from .core.summarize import write_summary
 from .templating.jinja_env import make_env
+from .templating.render import render_from_path, render_and_save
 from .docker.build import docker_build
 from .docker.run import docker_run
 from .docker.classify import classify_run_returncode
@@ -23,34 +22,11 @@ from .agent.claude_runner import ClaudeRepoAgent
 
 logger = logging.getLogger("env_setup_agent")
 
-def render_and_save(output_paths: List[Path], templates_dir: Path, template_filename: str, vars_dict: dict, mode: int | None):
-    """
-    Search `template_filename` under `templates_dir`, render template using `vars_dict`, 
-    save in all paths in `output_paths` in an optional `mode`.
-    """
-    logger.debug(f"Render from jinja template at {templates_dir / template_filename}")
-    logger.debug(f"Render with variables: {vars_dict}")
-
-    if mode is not None:
-        assert mode >= 0o000 and mode <= 0o777, f"Got invalid mode {oct(mode)}"
-    env = make_env(templates_dir)
-    tpl = env.get_template(template_filename)
-    output = tpl.render(**vars_dict)
-
-    for output_path in output_paths:
-        logger.debug(f"Save rendered template at {output_path}")
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        output_path.write_text(output)
-        if mode is None:
-            continue
-        output_path.chmod(mode)
-
 async def run_one(
     spec: RepoSpec,
     python_cap_minor: Tuple[int, int],
     env_id: str,
-    prompts_dir: Path,
-    templates_dir: Path,
+    path_config: PathConfig,
     app_user: str,
     mount_dir: str,
     model: str | None = None,
@@ -64,8 +40,7 @@ async def run_one(
     Args:
         spec: Repository specification
         python_cap_minor: Python version cap (major, minor)
-        prompts_dir: Directory containing prompt templates
-        templates_dir: Directory containing Dockerfile template
+        path_config: Configs related to path
         app_user: App user name for Docker
         mount_dir: Mount directory path for Docker
         model: Optional model name override
@@ -82,27 +57,14 @@ async def run_one(
     logger.info(f"Max rounds: {max_rounds}")
 
     # Load prompt fragments
-    system_md = prompts_dir / "system.md"
-    policy_md = prompts_dir / "policy.md"
-    contract_json_path = prompts_dir / "contract.json"
-    repo_task_tpl_path = prompts_dir / "repo_task.md.j2"
-
-    logger.debug(f"Loading prompts from {prompts_dir}")
-    assert(system_md.exists(), "Can proceed without a provided system prompt.")
-    assert(policy_md.exists(), "Can proceed without a provided policy prompt.")
-    assert(contract_json_path.exists(), "Can proceed without a provided contract json.")
-    assert(repo_task_tpl_path.exists(), "Can proceed without a provided repo task template prompt.")
-
-    system_txt = system_md.read_text() 
-    policy_txt = policy_md.read_text()
-    contract = contract_json_path.read_text()
-    task_tpl_content = repo_task_tpl_path.read_text()
-    task_tpl = Template(task_tpl_content)
-    repo_task = task_tpl.render(
-        repo_name=spec.repo_name,
-        commit_sha=spec.commit_sha,
-        python_cap_minor=python_cap_minor
-    )
+    system_prompt = path_config.system_prompt_path.read_text() 
+    policy_prompt = path_config.policy_prompt_path.read_text()
+    contract = path_config.contract_json_path.read_text()
+    repo_task = render_from_path(path_config.repo_task_tpl_path, {
+        "repo_name": spec.repo_name,
+        "commit_sha": spec.commit_sha,
+        "python_cap_minor": python_cap_minor
+    })
 
     # Create agent
     logger.info("Initializing Claude agent")
@@ -138,7 +100,6 @@ async def run_one(
         logger.debug(f"Saved decision JSON to {decision_json_path}")
 
         # Define image tag for this iteration
-        # TODO: Add env id
         tag = get_image_tag(env_id)
 
         # Render Dockerfile
@@ -163,7 +124,7 @@ async def run_one(
                 Path(spec.env_dir) / "Dockerfile",
                 iteration_dir / "Dockerfile",
             ], 
-            templates_dir, DEFAULT_DOCKERFILE_TEMPLATE_FILENAME, 
+            path_config.dockerfile_tpl_path,
             template_vars, None
         )
 
@@ -179,7 +140,7 @@ async def run_one(
                 Path(spec.env_dir) / "build.sh",
                 iteration_dir / "build.sh",
             ], 
-            templates_dir, DEFAULT_DOCKER_BUILD_SCRIPT_TEMPLATE_FILENAME, 
+            path_config.build_script_tpl_path,
             build_script_vars, 0o755
         )
         logger.info("Rendering run.sh from templates")
@@ -197,7 +158,7 @@ async def run_one(
                 Path(spec.env_dir) / "run.sh",
                 iteration_dir / "run.sh",
             ], 
-            templates_dir, DEFAULT_DOCKER_RUN_SCRIPT_TEMPLATE_FILENAME, 
+            path_config.run_script_tpl_path,
             run_script_vars, 0o755
         )
 
@@ -271,10 +232,12 @@ async def run_one(
         commit_sha=spec.commit_sha,
         py_cap_minor=python_cap_minor,
         build_and_test_cb=build_and_test_cb,
-        system_txt=system_txt,
+        system_txt=system_prompt,
         task_tpl=repo_task,
-        policy_txt=policy_txt,
+        policy_prompt=policy_prompt,
         contract_json=contract,
+        init_tpl_path=path_config.initial_tpl_path,
+        iter_tpl_path=path_config.iterate_tpl_path,
         max_rounds=max_rounds,
     )
 

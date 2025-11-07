@@ -5,7 +5,6 @@ import argparse
 import sys
 import yaml
 from pathlib import Path
-from typing import Optional
 import os
 import logging
 
@@ -84,6 +83,8 @@ async def run_from_config(config_path: Path) -> int:
         logger = get_logger()
 
         logger.info(f"Running env_setup_agent from config: {config_path}")
+        logger.debug(f"Loaded config: {config}")
+        logger.debug(f"Loaded repo_spec: {repo_spec}")
 
         # Validate repo path exists
         repo_path = Path(repo_spec.repo_path)
@@ -97,20 +98,12 @@ async def run_from_config(config_path: Path) -> int:
         python_cap = commit_info_fetcher.infer_python_upper_bound_for_repo(repo_spec.repo_name, repo_spec.commit_sha)
         logger.info(f"Python version cap for commit {repo_spec.repo_name} @ {repo_spec.commit_sha}: {python_cap[0]}.{python_cap[1]}")
 
-        # Get paths from config
-        prompts_dir = Path(config.paths.prompts_dir).resolve()
-        templates_dir = Path(config.paths.templates_dir).resolve()
-
-        logger.info(f"Prompts directory: {prompts_dir}")
-        logger.info(f"Templates directory: {templates_dir}")
-
         # Run generation
         decision = await run_one(
             spec=repo_spec,
             python_cap_minor=python_cap,
             env_id=repo_spec.env_id,
-            prompts_dir=prompts_dir,
-            templates_dir=templates_dir,
+            path_config=config.paths,
             app_user=config.env.app_user,
             mount_dir=config.env.mount_dir,
             model=config.agent.model,

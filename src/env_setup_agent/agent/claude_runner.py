@@ -5,7 +5,8 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Callable, Awaitable
 
-from ..core.models import Decision, DockerVars, generate_dummy_decision
+from ..templating.render import render_from_path
+from ..core.models import Decision, DockerVars
 from ..core.enums import Status
 from ..core import schema as schema_mod
 
@@ -69,61 +70,6 @@ def map_decision(obj: Dict[str, Any]) -> Decision:
         )
 
     return Decision(status, obj.get("reason"), variables, obj.get("evidence", {}))
-
-
-# Prompt assembly
-
-
-def assemble_initial_user(repo_task: str, policy: str, contract_json: str) -> str:
-    """
-    Assemble initial user prompt.
-
-    Args:
-        repo_task: Task description
-        policy: Policy text
-        contract_json: JSON schema contract
-
-    Returns:
-        Complete user prompt
-    """
-    return "\n\n".join([
-        repo_task,
-        "POLICY",
-        policy,
-        "CONTRACT",
-        f"```json\n{contract_json}\n```",
-        "Return only the JSON."
-    ])
-
-
-def assemble_iteration_user(prev_vars: DockerVars, build_tail: str, run_tail: str) -> str:
-    """
-    Assemble iteration prompt with logs.
-
-    Args:
-        prev_vars: Previous variables
-        build_tail: Build log tail
-        run_tail: Run log tail
-
-    Returns:
-        Iteration prompt
-    """
-    prev_json = json.dumps(asdict(prev_vars), indent=2)
-    return f"""PREVIOUS VARIABLES
-```json
-{prev_json}
-```
-
-UPDATE (build/run logs, tails)
-
-=== BUILD LOG ===
-{build_tail}
-
-=== RUN LOG ===
-{run_tail}
-
-Return ONLY the revised JSON per the same contract. If policy is violated, set status="refuse" with reason & evidence.
-"""
 
 
 # Agent class
@@ -197,8 +143,10 @@ class ClaudeRepoAgent:
         build_and_test_cb: Callable[[DockerVars], Awaitable[Tuple[bool, str, str, str]]],
         system_txt: str,
         task_tpl: str,
-        policy_txt: str,
+        policy_prompt: str,
         contract_json: str,
+        init_tpl_path: Path,
+        iter_tpl_path: Path,
         max_rounds: int = 3,
     ) -> Decision:
         """
@@ -233,11 +181,16 @@ class ClaudeRepoAgent:
             commit_sha=commit_sha,
             python_cap_minor=py_cap_minor
         )
-        user0 = assemble_initial_user(repo_task, policy_txt, contract_json)
+        user0 = render_from_path(
+            init_tpl_path, {
+                "repo_task": repo_task,
+                "policy": policy_prompt,
+                "contract_json": contract_json
+            }
+        )
 
         # Configure client
         options = ClaudeAgentOptions(
-            # TODO: Use the provided system.md instead
             system_prompt=system_txt,
             allowed_tools=["Glob", "Grep", "Read"],
             permission_mode="plan",
@@ -247,6 +200,7 @@ class ClaudeRepoAgent:
 
         async with ClaudeSDKClient(options=options) as client:
             decision = await self._ask(client, user0)
+            # from ..core.models import generate_dummy_decision
             # decision = generate_dummy_decision()
 
             if decision.status is Status.REFUSE:
@@ -261,12 +215,14 @@ class ClaudeRepoAgent:
                 if ok or classification == "pytest_failed":
                     return decision
 
-                user_iter = assemble_iteration_user(
-                    decision.variables,
-                    build_tail[-32000:],
-                    run_tail[-32000:]
-                )
+                prev_json = json.dumps(asdict(decision.variables), indent=2)
+                user_iter = render_from_path(iter_tpl_path, {
+                    "previous_vars_json": prev_json,
+                    "build_log_tail": build_tail[-32000:],
+                    "run_log_tail": run_tail[-32000:],
+                })
                 decision = await self._ask(client, user_iter)
+                # from ..core.models import generate_dummy_decision
                 # decision = generate_dummy_decision()
 
                 if decision.status is Status.REFUSE:
@@ -274,9 +230,9 @@ class ClaudeRepoAgent:
 
                 rounds += 1
 
-            return Decision(
-                Status.REFUSE,
-                f"max rounds {max_rounds} reached",
-                None,
-                {"loop": ["max_rounds_exhausted"]}
-            )
+        return Decision(
+            Status.REFUSE,
+            f"max rounds {max_rounds} reached",
+            None,
+            {"loop": ["max_rounds_exhausted"]}
+        )

@@ -1,10 +1,6 @@
 # syntax=docker/dockerfile:1.7
-{#- REQUIRED:
-   python_version_tag, mount_dir, test_workdir,
-   app_user, project_apt_packages, env_vars, pip_deps, test_cmd
-
-   NOTE: install_editable is NO LONGER handled in the Dockerfile.
-   Editable installation now happens at runtime in run.sh before running tests,
+{#- 
+   NOTE: Editable installation now happens not in build phase but at runtime in run.sh before running tests,
    since the repo is bind-mounted and cannot be reliably pip editable installed during build.
 #}
 
