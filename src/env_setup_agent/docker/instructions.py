@@ -6,7 +6,6 @@ from pathlib import Path
 def write_build_and_run_scripts(
     env_dir: Path,
     image_tag: str,
-    data_root: Path,
     mount_dir: str,
     repo_path: Path
 ) -> None:
@@ -16,9 +15,8 @@ def write_build_and_run_scripts(
     Args:
         env_dir: Environment directory
         image_tag: Docker image tag
-        data_root: Root data directory (build context)
         mount_dir: Mount path inside container
-        repo_path: Path to the repository to mount
+        repo_path: Path to the repository (used as build context and runtime mount)
     """
     # Write build.sh
     build_script = f"""#!/usr/bin/env bash
@@ -26,7 +24,7 @@ set -euo pipefail
 
 # Build the Docker image
 export DOCKER_BUILDKIT=1
-docker build -f {env_dir}/Dockerfile -t {image_tag} {data_root}
+docker build -f {env_dir}/Dockerfile -t {image_tag} {repo_path}
 """
 
     build_path = env_dir / "build.sh"

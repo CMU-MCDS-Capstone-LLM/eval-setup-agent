@@ -16,9 +16,15 @@ class AgentConfig:
 @dataclass
 class PathConfig:
     """Configuration for paths."""
-    data_root: str
     prompts_dir: str
     templates_dir: str
+
+
+@dataclass
+class EnvConfig:
+    """Configuration for environment settings."""
+    app_user: str
+    mount_dir: str
 
 
 @dataclass
@@ -26,3 +32,4 @@ class Config:
     """Main configuration."""
     agent: AgentConfig = field(default_factory=AgentConfig)
     paths: PathConfig = field(default_factory=PathConfig)
+    env: EnvConfig = field(default_factory=EnvConfig)

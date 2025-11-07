@@ -31,12 +31,9 @@ class Facts:
 
 @dataclass
 class DockerVars:
-    """Variables for the Dockerfile template."""
+    """Variables for the Dockerfile template (LLM-analyzed only)."""
     python_version_tag: str
-    mount_dir: str
-    repo_bind_src: str
-    test_workdir: str
-    app_user: str
+    test_worksubdir: str
     project_apt_packages: List[str]
     env_vars: Dict[str, str]
     pip_deps: List[str]

@@ -8,7 +8,8 @@ from typing import Optional, Dict, Any
 
 from env_setup_agent.resources.configs.prompts import DEFAULT_PROMPTS_DIR
 from env_setup_agent.resources.configs.templates import DEFAULT_TEMPLATES_DIR
-from .model import Config, AgentConfig, PathConfig
+from env_setup_agent.const.docker import DEFAULT_APP_USER, DEFAULT_MOUNT_DIR
+from .model import Config, AgentConfig, PathConfig, EnvConfig
 
 
 def load_from_yaml(config_path: Path) -> Config:
@@ -56,10 +57,6 @@ def load_from_yaml(config_path: Path) -> Config:
         return str(path.resolve())
 
     path_config = PathConfig(
-        data_root=resolve_path(
-            paths_data.get("data_root", ""),
-            "data"
-        ),
         prompts_dir=resolve_path(
             paths_data.get("prompts_dir", ""),
             DEFAULT_PROMPTS_DIR
@@ -70,7 +67,13 @@ def load_from_yaml(config_path: Path) -> Config:
         ),
     )
 
-    return Config(agent=agent_config, paths=path_config)
+    # Parse env config
+    env_config = EnvConfig(
+        app_user=data["env"]["app_user"],
+        mount_dir=data["env"]["mount_dir"],
+    )
+
+    return Config(agent=agent_config, paths=path_config, env=env_config)
 
 
 def load_from_env() -> Config:
@@ -82,9 +85,10 @@ def load_from_env() -> Config:
         ESA_MAX_ROUNDS: Maximum iteration rounds
         ESA_BUILD_TIMEOUT: Build timeout in seconds
         ESA_RUN_TIMEOUT: Run timeout in seconds
-        ESA_DATA_ROOT: Data root directory
         ESA_PROMPTS_DIR: Prompts directory
         ESA_TEMPLATES_DIR: Templates directory
+        ESA_APP_USER: App user name
+        ESA_MOUNT_DIR: Mount directory path
 
     Returns:
         Config instance with values from environment
@@ -97,12 +101,16 @@ def load_from_env() -> Config:
     )
 
     path_config = PathConfig(
-        data_root=os.getenv("ESA_DATA_ROOT", "data"),
         prompts_dir=os.getenv("ESA_PROMPTS_DIR", "src/env_setup_agent/agent/prompts"),
         templates_dir=os.getenv("ESA_TEMPLATES_DIR", "src/env_setup_agent/templating"),
     )
 
-    return Config(agent=agent_config, paths=path_config)
+    env_config = EnvConfig(
+        app_user=os.environ["ESA_APP_USER"],
+        mount_dir=os.environ["ESA_MOUNT_DIR"],
+    )
+
+    return Config(agent=agent_config, paths=path_config, env=env_config)
 
 
 def merge_configs(base: Config, **overrides: Any) -> Config:
@@ -111,13 +119,14 @@ def merge_configs(base: Config, **overrides: Any) -> Config:
 
     Args:
         base: Base configuration
-        **overrides: Override values for agent or paths
+        **overrides: Override values for agent, paths, or env
 
     Returns:
         New Config instance with merged values
     """
     agent_overrides = overrides.get("agent", {})
     path_overrides = overrides.get("paths", {})
+    env_overrides = overrides.get("env", {})
 
     agent_config = AgentConfig(
         model=agent_overrides.get("model", base.agent.model),
@@ -127,9 +136,13 @@ def merge_configs(base: Config, **overrides: Any) -> Config:
     )
 
     path_config = PathConfig(
-        data_root=path_overrides.get("data_root", base.paths.data_root),
         prompts_dir=path_overrides.get("prompts_dir", base.paths.prompts_dir),
         templates_dir=path_overrides.get("templates_dir", base.paths.templates_dir),
     )
 
-    return Config(agent=agent_config, paths=path_config)
+    env_config = EnvConfig(
+        app_user=env_overrides.get("app_user", base.env.app_user),
+        mount_dir=env_overrides.get("mount_dir", base.env.mount_dir),
+    )
+
+    return Config(agent=agent_config, paths=path_config, env=env_config)

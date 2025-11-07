@@ -26,10 +26,7 @@
       "type": "object",
       "required": [
         "python_version_tag",
-        "mount_dir",
-        "repo_bind_src",
-        "test_workdir",
-        "app_user",
+        "test_worksubdir",
         "project_apt_packages",
         "env_vars",
         "pip_deps",
@@ -41,17 +38,9 @@
           "type": "string",
           "pattern": "^\\d+\\.\\d+\\.\\d+-slim$"
         },
-        "mount_dir": {
-          "type": "string"
-        },
-        "repo_bind_src": {
-          "type": "string"
-        },
-        "test_workdir": {
-          "type": "string"
-        },
-        "app_user": {
-          "type": "string"
+        "test_worksubdir": {
+          "type": "string",
+          "description": "Subdirectory relative to repo root where tests should run (use '.' for root)"
         },
         "project_apt_packages": {
           "type": "array",

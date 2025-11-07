@@ -13,7 +13,7 @@ from .core.models import RepoSpec
 from .config import load_from_yaml
 from .runflow import run_one
 from .adapters.github_commit import CommitInfoFetcher
-from .utils.logging import setup_logging
+from .utils.logging import setup_logging, get_logger
 
 
 def load_repo_spec(config_path: Path) -> RepoSpec:
@@ -81,7 +81,6 @@ async def run_from_config(config_path: Path) -> int:
         log_file = env_dir / "env_setup_agent.log"
         setup_logging(log_file=log_file, level=logging.DEBUG)
 
-        from .utils.logging import get_logger
         logger = get_logger()
 
         logger.info(f"Running env_setup_agent from config: {config_path}")
@@ -93,6 +92,7 @@ async def run_from_config(config_path: Path) -> int:
             return 1
 
         # Determine Python version cap from commit date
+        # Python version cap is the maximal python major+minor version possible, based on the timestamp of migration commit
         commit_info_fetcher = CommitInfoFetcher(os.getenv("GITHUB_TOKEN"))
         python_cap = commit_info_fetcher.infer_python_upper_bound_for_repo(repo_spec.repo_name, repo_spec.commit_sha)
         logger.info(f"Python version cap for commit {repo_spec.repo_name} @ {repo_spec.commit_sha}: {python_cap[0]}.{python_cap[1]}")
@@ -100,11 +100,9 @@ async def run_from_config(config_path: Path) -> int:
         # Get paths from config
         prompts_dir = Path(config.paths.prompts_dir).resolve()
         templates_dir = Path(config.paths.templates_dir).resolve()
-        data_root = Path(config.paths.data_root)
 
         logger.info(f"Prompts directory: {prompts_dir}")
         logger.info(f"Templates directory: {templates_dir}")
-        logger.info(f"Data root: {data_root}")
 
         # Run generation
         decision = await run_one(
@@ -112,7 +110,8 @@ async def run_from_config(config_path: Path) -> int:
             python_cap_minor=python_cap,
             prompts_dir=prompts_dir,
             templates_dir=templates_dir,
-            data_root=data_root,
+            app_user=config.env.app_user,
+            mount_dir=config.env.mount_dir,
             model=config.agent.model,
             max_rounds=config.agent.max_rounds,
             build_timeout_s=config.agent.build_timeout_s,

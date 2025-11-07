@@ -17,16 +17,12 @@ SCHEMA: Dict[str, Any] = {
         "variables": {
             "type": "object",
             "required": [
-                "python_version_tag", "mount_dir", "repo_bind_src", "test_workdir",
-                "app_user", "project_apt_packages", "env_vars", "pip_deps",
-                "install_editable", "test_cmd"
+                "python_version_tag", "test_worksubdir", "project_apt_packages",
+                "env_vars", "pip_deps", "install_editable", "test_cmd"
             ],
             "properties": {
                 "python_version_tag": {"type": "string", "pattern": r"^\d+\.\d+\.\d+-slim$"},
-                "mount_dir": {"type": "string"},
-                "repo_bind_src": {"type": "string"},
-                "test_workdir": {"type": "string"},
-                "app_user": {"type": "string"},
+                "test_worksubdir": {"type": "string"},
                 "project_apt_packages": {"type": "array", "items": {"type": "string"}},
                 "env_vars": {"type": "object", "additionalProperties": {"type": "string"}},
                 "pip_deps": {"type": "array", "items": {"type": "string"}},

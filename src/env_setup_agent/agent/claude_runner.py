@@ -59,10 +59,7 @@ def map_decision(obj: Dict[str, Any]) -> Decision:
         v = obj["variables"]
         variables = DockerVars(
             python_version_tag=v["python_version_tag"],
-            mount_dir=v["mount_dir"],
-            repo_bind_src=v["repo_bind_src"],
-            test_workdir=v["test_workdir"],
-            app_user=v["app_user"],
+            test_worksubdir=v["test_worksubdir"],
             project_apt_packages=v.get("project_apt_packages", []),
             env_vars=v.get("env_vars", {}),
             pip_deps=v.get("pip_deps", []),

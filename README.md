@@ -4,7 +4,7 @@
 
   We need to expand and tune the prompt based on our old ones. Check out [the common prompting techniques](https://www.promptingguide.ai/techniques)
 
-- [ ] don't use separate variables `test_workdir`, `mount_dir`. Assume test runs in repo root (or sub folder of repo root?).
+- [x] don't use separate variables `test_workdir`, `mount_dir`. Assume test runs in subfolder relative to repo root. Thus, agent only supplies a decision of `test_worksubdir`, and we manually join it with `mount_dir`
 
 - [x] Fill template sometimes cram two lines together
 
@@ -18,7 +18,7 @@
       apt-get update && apt-get install -y --no-install-recommends \      build-essential \      libssl-dev \      libffi-dev \      libyaml-dev \    && rm -rf /var/lib/apt/lists/*
   ```
 
-- [ ] Need to show the agent the data folder structure, the generated dockerfile, build.sh, and run.sh for better context
+- [ ] Need to show the agent the generated dockerfile, build.sh, and run.sh for better context
 
 - [x] Manually add pytest, pytest-cov, coverage as repo env deps
 
@@ -40,44 +40,23 @@
     bash -lc "pip install -e .[fixtures,rabbitmq,pymongo,elastic,sqlalchemy,fastapi,slack,redis,flask] && python -m pytest"
   ```
 
-- [x] The current dockerfile context is a bit too broad
+- [ ] The current dockerfile context is a bit too broad
 
   It use the entire data folder. This can be problem when we download multiple repos in the data folder, since docker build need to copy the entire context folder into its own workspace.
 
-  We can
+  We can simply use the repo root as context like this
 
-  - either refine the context into subfolder of data folder (that can make bind-mount hard since in build process, bind-mount's path need to be the path within context)
+  ```bash
+  docker build -f <data folder>/envs/<repo id>/Dockerfile -t <repo tag> <data folder>/repos/<repo id>
+  ```
 
-  - or restructure the data folder
+  This is because all we need from the context is to map repo into container during build
 
-    from
+- [ ] Execute the actual build and run shell script, instead of using a custom string in python
 
-    ```
-    data/
-    - envs/
-      - repo1/
-      - repo2/
-      - repo3/
-    - repos/
-      - repo1/
-      - repo2/
-      - repo3/
-    ```
+- [ ] Remove unnecessary code that are unrelated to the purpose of generation
 
-    to
-
-    ```
-    data
-      repo1/
-        env/
-        repo/
-      repo2/
-        env/
-        repo/
-      repo3/
-        env/
-        repo/
-    ```
+  - e.g. data_root, the whole repo index thing
 
 - [x] Generate run.sh and build.sh separately
 

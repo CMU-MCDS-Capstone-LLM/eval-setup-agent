@@ -11,7 +11,7 @@ from ..core.models import BuildResult
 def docker_build(
     env_dir: Path,
     image_tag: str,
-    data_root: Path,
+    repo_path: Path,
     timeout_s: int = 1800
 ) -> BuildResult:
     """
@@ -20,7 +20,7 @@ def docker_build(
     Args:
         env_dir: Environment directory containing Dockerfile
         image_tag: Tag for the built image
-        data_root: Root data directory (build context)
+        repo_path: Repository path (build context)
         timeout_s: Build timeout in seconds
 
     Returns:
@@ -30,7 +30,7 @@ def docker_build(
     log_path = env_dir / "build.log"
     log_path.parent.mkdir(parents=True, exist_ok=True)
 
-    cmd = f"docker build -f {shlex.quote(str(dockerfile))} -t {shlex.quote(image_tag)} {shlex.quote(str(data_root))}"
+    cmd = f"docker build -f {shlex.quote(str(dockerfile))} -t {shlex.quote(image_tag)} {shlex.quote(str(repo_path))}"
     env = os.environ.copy()
     env["DOCKER_BUILDKIT"] = "1"
 

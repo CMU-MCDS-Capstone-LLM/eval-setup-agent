@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 {#- REQUIRED:
-   python_version_tag, mount_dir, repo_bind_src, test_workdir,
+   python_version_tag, mount_dir, test_workdir,
    app_user, project_apt_packages, env_vars, pip_deps,
    install_editable, test_cmd
 #}
@@ -46,8 +46,9 @@ RUN --mount=type=cache,target=/home/${APP_USER}/.cache/pip \
       pip install pytest pytest-cov coverage; \
       true'
 
+# NOTE: The docker build context IS the repo root, so source is simply "."
 RUN --mount=type=cache,target=/home/${APP_USER}/.cache/pip \
-    --mount=type=bind,source={{ repo_bind_src }},target={{ mount_dir }},rw \
+    --mount=type=bind,source=.,target={{ mount_dir }},rw \
     bash -lc 'set -euo pipefail; \
       cd "{{ test_workdir }}"; \
 {%- for step in pip_deps %}

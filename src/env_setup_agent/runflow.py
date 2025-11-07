@@ -47,7 +47,8 @@ async def run_one(
     python_cap_minor: Tuple[int, int],
     prompts_dir: Path,
     templates_dir: Path,
-    data_root: Path,
+    app_user: str,
+    mount_dir: str,
     model: str | None = None,
     max_rounds: int = 3,
     build_timeout_s: int = 1800,
@@ -61,7 +62,8 @@ async def run_one(
         python_cap_minor: Python version cap (major, minor)
         prompts_dir: Directory containing prompt templates
         templates_dir: Directory containing Dockerfile template
-        data_root: Root data directory
+        app_user: App user name for Docker
+        mount_dir: Mount directory path for Docker
         model: Optional model name override
         max_rounds: Maximum iteration rounds
         build_timeout_s: Build timeout in seconds
@@ -133,7 +135,19 @@ async def run_one(
 
         # Render Dockerfile
         logger.info("Rendering Dockerfile from template")
-        render_dockerfile(Path(spec.env_dir), templates_dir, asdict(dvars))
+        # Merge config-provided and LLM-provided variables
+        # Compute test_workdir from mount_dir + test_worksubdir
+        dvars_dict = asdict(dvars)
+        test_worksubdir = dvars_dict.pop('test_worksubdir')
+        test_workdir = os.path.join(mount_dir, test_worksubdir)
+
+        template_vars = {
+            'app_user': app_user,
+            'mount_dir': mount_dir,
+            'test_workdir': test_workdir,
+            **dvars_dict
+        }
+        render_dockerfile(Path(spec.env_dir), templates_dir, template_vars)
 
         # Also save Dockerfile to iteration directory
         dockerfile_content = (Path(spec.env_dir) / "Dockerfile").read_text()
@@ -146,7 +160,7 @@ async def run_one(
         bres = docker_build(
             Path(spec.env_dir),
             tag,
-            data_root,
+            Path(spec.repo_path),
             timeout_s=build_timeout_s
         )
 
@@ -238,11 +252,9 @@ async def run_one(
         (env_dir / "_FAILURE").write_text("")
 
     # Write run instructions
-    mount_dir = decision.variables.mount_dir if decision.variables else "/workspace"
     write_build_and_run_scripts(
         env_dir,
         f"envsetup/{spec.env_id}:tests",
-        data_root,
         mount_dir,
         Path(spec.repo_path)
     )
