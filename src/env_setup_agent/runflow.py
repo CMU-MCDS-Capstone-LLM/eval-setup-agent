@@ -4,8 +4,13 @@ import json
 import logging
 from dataclasses import asdict
 from pathlib import Path
-from typing import Tuple
+from typing import List, Tuple
 from jinja2 import Template
+from pathlib import Path
+import os
+
+from env_setup_agent.const.docker import DEFAULT_DOCKER_BUILD_SCRIPT_TEMPLATE_FILENAME, DEFAULT_DOCKER_RUN_SCRIPT_TEMPLATE_FILENAME, DEFAULT_DOCKERFILE_TEMPLATE_FILENAME
+from env_setup_agent.docker import get_image_tag
 
 from .core.models import RepoSpec, Decision, DockerVars
 from .core.enums import Status
@@ -14,33 +19,31 @@ from .templating.jinja_env import make_env
 from .docker.build import docker_build
 from .docker.run import docker_run
 from .docker.classify import classify_run_returncode
-from .docker.instructions import write_build_and_run_scripts
 from .agent.claude_runner import ClaudeRepoAgent
 
 logger = logging.getLogger("env_setup_agent")
 
-
-def render_dockerfile(
-    env_dir: Path,
-    templates_dir: Path,
-    vars_dict: dict
-) -> None:
+def render_and_save(output_paths: List[Path], templates_dir: Path, template_filename: str, vars_dict: dict, mode: int | None):
     """
-    Render Dockerfile from template.
-
-    Args:
-        env_dir: Environment directory
-        templates_dir: Templates directory
-        vars_dict: Variables for template
+    Search `template_filename` under `templates_dir`, render template using `vars_dict`, 
+    save in all paths in `output_paths` in an optional `mode`.
     """
+    logger.debug(f"Render from jinja template at {templates_dir / template_filename}")
+    logger.debug(f"Render with variables: {vars_dict}")
+
+    if mode is not None:
+        assert mode >= 0o000 and mode <= 0o777, f"Got invalid mode {oct(mode)}"
     env = make_env(templates_dir)
-    tpl = env.get_template("dockerfile.template.j2")
-    dockerfile = tpl.render(**vars_dict)
+    tpl = env.get_template(template_filename)
+    output = tpl.render(**vars_dict)
 
-    out_path = env_dir / "Dockerfile"
-    env_dir.mkdir(parents=True, exist_ok=True)
-    out_path.write_text(dockerfile)
-
+    for output_path in output_paths:
+        logger.debug(f"Save rendered template at {output_path}")
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_text(output)
+        if mode is None:
+            continue
+        output_path.chmod(mode)
 
 async def run_one(
     spec: RepoSpec,
@@ -133,6 +136,9 @@ async def run_one(
         decision_json_path.write_text(json.dumps(decision_data, indent=2))
         logger.debug(f"Saved decision JSON to {decision_json_path}")
 
+        # Define image tag for this iteration
+        tag = get_image_tag()
+
         # Render Dockerfile
         logger.info("Rendering Dockerfile from template")
         # Merge config-provided and LLM-provided variables
@@ -147,20 +153,53 @@ async def run_one(
             'test_workdir': test_workdir,
             **dvars_dict
         }
-        render_dockerfile(Path(spec.env_dir), templates_dir, template_vars)
+        # Render Dockerfile, and save to both env dir and iteration dir (under env dir)
+        logger.info("Render Dockerfile from templates")
+        render_and_save(
+            [
+                Path(spec.env_dir) / "Dockerfile",
+                iteration_dir / "Dockerfile",
+            ], 
+            templates_dir, DEFAULT_DOCKERFILE_TEMPLATE_FILENAME, 
+            template_vars, None
+        )
 
-        # Also save Dockerfile to iteration directory
-        dockerfile_content = (Path(spec.env_dir) / "Dockerfile").read_text()
-        (iteration_dir / "Dockerfile").write_text(dockerfile_content)
-        logger.debug(f"Saved Dockerfile to {iteration_dir}")
+        # Render build.sh and run.sh from templates
+        logger.info("Rendering build.sh from templates")
+        build_script_vars = {
+            'env_dir': str(Path(spec.env_dir).absolute()),
+            'image_tag': tag,
+            'repo_path': str(Path(spec.repo_path).absolute()),
+            'mount_dir': mount_dir
+        }
+        render_and_save(
+            [
+                Path(spec.env_dir) / "build.sh",
+                iteration_dir / "build.sh",
+            ], 
+            templates_dir, DEFAULT_DOCKER_BUILD_SCRIPT_TEMPLATE_FILENAME, 
+            build_script_vars, 0o755
+        )
+        logger.info("Rendering run.sh from templates")
+        run_script_vars = {
+            **build_script_vars
+            # TODO: Add more vars if needed
+        }
+        render_and_save(
+            [
+                Path(spec.env_dir) / "run.sh",
+                iteration_dir / "run.sh",
+            ], 
+            templates_dir, DEFAULT_DOCKER_RUN_SCRIPT_TEMPLATE_FILENAME, 
+            run_script_vars, 0o755
+        )
 
         # Build
-        tag = f"envsetup/{spec.env_id}:tests"
         logger.info(f"Building Docker image: {tag}")
         bres = docker_build(
-            Path(spec.env_dir),
-            tag,
-            Path(spec.repo_path),
+            build_script_path=Path(spec.env_dir) / "build.sh",
+            log_path=iteration_dir / "build.log",
+            image_tag=tag,
             timeout_s=build_timeout_s
         )
 
@@ -189,10 +228,8 @@ async def run_one(
         # Run
         logger.info("Running tests in container")
         rc, run_log_path, status = docker_run(
-            tag,
-            Path(spec.repo_path),
-            dvars.mount_dir,
-            Path(spec.env_dir),
+            run_script_path=Path(spec.env_dir) / "run.sh",
+            log_path=iteration_dir / "run.log",
             timeout_s=run_timeout_s
         )
 
@@ -251,14 +288,8 @@ async def run_one(
         logger.warning(f"✗ Generation refused: {decision.reason}")
         (env_dir / "_FAILURE").write_text("")
 
-    # Write run instructions
-    write_build_and_run_scripts(
-        env_dir,
-        f"envsetup/{spec.env_id}:tests",
-        mount_dir,
-        Path(spec.repo_path)
-    )
-    logger.debug(f"Wrote build.sh and run.sh to {env_dir}")
+    # Note: build.sh and run.sh are already generated in the last iteration
+    logger.debug(f"build.sh and run.sh available at {env_dir}")
 
     # Write summary
     write_summary(env_dir, spec, decision)

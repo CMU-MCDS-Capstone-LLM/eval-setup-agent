@@ -3,11 +3,11 @@
 from .build import docker_build
 from .run import docker_run
 from .classify import classify_run_returncode
-from .instructions import write_build_and_run_scripts
+from .common import get_image_tag
 
 __all__ = [
     "docker_build",
     "docker_run",
     "classify_run_returncode",
-    "write_build_and_run_scripts",
+    "get_image_tag",
 ]

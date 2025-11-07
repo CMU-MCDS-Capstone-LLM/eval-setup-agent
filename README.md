@@ -40,7 +40,7 @@
     bash -lc "pip install -e .[fixtures,rabbitmq,pymongo,elastic,sqlalchemy,fastapi,slack,redis,flask] && python -m pytest"
   ```
 
-- [ ] The current dockerfile context is a bit too broad
+- [x] The current dockerfile context is a bit too broad
 
   It use the entire data folder. This can be problem when we download multiple repos in the data folder, since docker build need to copy the entire context folder into its own workspace.
 
@@ -52,11 +52,17 @@
 
   This is because all we need from the context is to map repo into container during build
 
-- [ ] Execute the actual build and run shell script, instead of using a custom string in python
+- [x] Execute the actual build and run shell script, instead of using a custom string in python
 
-- [ ] Remove unnecessary code that are unrelated to the purpose of generation
+- [x] Remove unnecessary code that are unrelated to the purpose of generation
 
   - e.g. data_root, the whole repo index thing
+
+- [ ] Refuse also when we need are in a monorepo, and a single pytest command won't be enough to run the test. For example, there are multiple python repos where each repo need a different configuration, such as two python microservices that requires different versions of python and different (maybe even conflicting) dependencies. Note that monorepo alone is not a sufficient reason to refuse: if you can simply configure all dependencies under a single python interpreter version, and run pytest directly in monorepo root folder, it's still fine.
+
+- [x] Modularize the save to env folder and iteration folder logic, and reuse for dockerfile, build.sh, run.sh
+
+- [ ] Add an abstraction of the generated env (like pymigbench's Migration class), so that it's easier to integrate into pipeline
 
 - [x] Generate run.sh and build.sh separately
 

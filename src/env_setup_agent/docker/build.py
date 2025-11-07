@@ -1,24 +1,22 @@
 """Docker build operations."""
 
-import os
 import subprocess
-import shlex
 from pathlib import Path
 from ..core.enums import FailureReason
 from ..core.models import BuildResult
 
 
 def docker_build(
-    env_dir: Path,
+    build_script_path: Path,
+    log_path: Path,
     image_tag: str,
-    repo_path: Path,
     timeout_s: int = 1800
 ) -> BuildResult:
     """
-    Build a Docker image using BuildKit.
+    Build a Docker image using BuildKit by executing build.sh script.
 
     Args:
-        env_dir: Environment directory containing Dockerfile
+        env_dir: Environment directory containing build.sh
         image_tag: Tag for the built image
         repo_path: Repository path (build context)
         timeout_s: Build timeout in seconds
@@ -26,21 +24,16 @@ def docker_build(
     Returns:
         BuildResult with success status and log path
     """
-    dockerfile = env_dir / "Dockerfile"
-    log_path = env_dir / "build.log"
-    log_path.parent.mkdir(parents=True, exist_ok=True)
+    assert build_script_path.exists(), f"build.sh not found at {build_script_path}"
+    assert build_script_path.is_absolute(), f"build_script must be absolute path: {build_script_path}"
 
-    cmd = f"docker build -f {shlex.quote(str(dockerfile))} -t {shlex.quote(image_tag)} {shlex.quote(str(repo_path))}"
-    env = os.environ.copy()
-    env["DOCKER_BUILDKIT"] = "1"
+    log_path.parent.mkdir(parents=True, exist_ok=True)
 
     with log_path.open("w") as logf:
         proc = subprocess.Popen(
-            cmd,
-            shell=True,
+            [str(build_script_path)],
             stdout=logf,
-            stderr=subprocess.STDOUT,
-            env=env
+            stderr=subprocess.STDOUT
         )
         try:
             rc = proc.wait(timeout=timeout_s)
