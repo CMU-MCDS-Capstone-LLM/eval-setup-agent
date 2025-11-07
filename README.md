@@ -1,5 +1,9 @@
 ## TODO
 
+- [ ] Run same repo multiple time, and expect all runs to succeed. If one failed, check why.
+  
+  This can help discover subtle issues, like agent has a low probability of misunderstanding the contract
+
 - [ ] > Sample 14 repos to generate, and manually review the successful and failed cases' env setup.
 
   This is meant to explore more unexpected cases that our prompt failed to cover.
@@ -31,6 +35,8 @@
     -
 
 - [ ] Add a comment on what's the current progress and next step, or why stucked, when failed due to max round exceeded
+
+- [ ] Add descriptions for each field in conttract.json (description + example)
 
 - [x] Manually add pytest, pytest-cov, coverage as repo env deps
 

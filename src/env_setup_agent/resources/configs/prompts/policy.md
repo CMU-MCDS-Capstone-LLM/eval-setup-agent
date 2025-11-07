@@ -2,9 +2,10 @@
 - Refuse if one of the following:
   - no unit tests;
   - all unit tests are skipped;
-  - external long-running services are required, unless tests self-spawn/manage them.
+  - external long-running services are required, unless tests self-spawn/manage them, or tests involving external services are skipped.
     If the unit tests expect access to an external services like databases, message queues, GitHub Actions services, etc, refuse.
     However, if external services are detected but tests use mocking or self-contained test fixtures, you may proceed.
+    Also, if some tests depending on external services are skipped, you may also proceed unless all tests are skipped.
 - You should install directly in the docker's env, instead of in a virtial env running in docker.
 - No services started in Dockerfile.
 - Image base: `python:X.Y-slim` with X.Y <= the detected upper bound. The upper bound is inferred from the timestamp of the repo's last commit, so it's impossible for the chosen python interpreter to have a higher version.
