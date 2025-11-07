@@ -7,9 +7,8 @@ from pathlib import Path
 from typing import List, Tuple
 from pathlib import Path
 
-from env_setup_agent.config.model import PathConfig
-from env_setup_agent.docker import get_image_tag
-
+from .config.model import PathConfig
+from .docker import get_image_tag
 from .core.models import RepoSpec, Decision, DockerVars
 from .core.enums import Status
 from .core.summarize import write_summary

@@ -4,8 +4,8 @@ from dataclasses import dataclass
 from typing import Optional, Self
 from pathlib import Path
 
-from env_setup_agent import resources
-from env_setup_agent import consts 
+from .. import resources
+from .. import consts 
 
 def resolve_path(path_str: str, default: str | Path, require_exists: bool = False) -> Path:
     """
