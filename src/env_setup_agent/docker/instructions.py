@@ -8,7 +8,7 @@ def write_build_and_run_scripts(
     image_tag: str,
     data_root: Path,
     mount_dir: str,
-    env_id: str
+    repo_path: Path
 ) -> None:
     """
     Write separate build.sh and run.sh scripts.
@@ -16,9 +16,9 @@ def write_build_and_run_scripts(
     Args:
         env_dir: Environment directory
         image_tag: Docker image tag
-        data_root: Root data directory
+        data_root: Root data directory (build context)
         mount_dir: Mount path inside container
-        env_id: Environment identifier
+        repo_path: Path to the repository to mount
     """
     # Write build.sh
     build_script = f"""#!/usr/bin/env bash
@@ -26,7 +26,7 @@ set -euo pipefail
 
 # Build the Docker image
 export DOCKER_BUILDKIT=1
-docker build -f data/envs/{env_id}/Dockerfile -t {image_tag} data/
+docker build -f {env_dir}/Dockerfile -t {image_tag} {data_root}
 """
 
     build_path = env_dir / "build.sh"
@@ -39,7 +39,7 @@ set -euo pipefail
 
 # Run tests in container
 docker run --rm \\
-  -v "$PWD/data/repos/{env_id}":"{mount_dir}" \\
+  -v "{repo_path}":"{mount_dir}" \\
   --user "$(id -u):$(id -g)" \\
   {image_tag}
 """

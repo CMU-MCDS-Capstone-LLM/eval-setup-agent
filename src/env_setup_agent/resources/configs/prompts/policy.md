@@ -7,4 +7,5 @@ POLICY
 - Base: python:X.Y-slim with X.Y <= the detected upper bound.
 - If external services are detected (docker-compose, GitHub Actions services, etc.) but tests use mocking or self-contained test fixtures, you may proceed.
 - If tests require actual running databases, message queues, or other services that are NOT mocked, you must refuse.
-- If a test is skipped, ignore it and don't refuse because of its content. However, if all tests are skipped, refuse to generate.
+- If a test is skipped, ignore it and don't refuse because of its content. This means, even if a skipped test violate any of the rule of a valid case (e.g. depending on external service), we won't refuse the generation because the test is skipped.
+  - However, if all tests are skipped, refuse to generate.

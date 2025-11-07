@@ -244,7 +244,7 @@ async def run_one(
         f"envsetup/{spec.env_id}:tests",
         data_root,
         mount_dir,
-        spec.env_id
+        Path(spec.repo_path)
     )
     logger.debug(f"Wrote build.sh and run.sh to {env_dir}")
 

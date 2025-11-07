@@ -106,8 +106,6 @@ async def run_from_config(config_path: Path) -> int:
         logger.info(f"Templates directory: {templates_dir}")
         logger.info(f"Data root: {data_root}")
 
-        breakpoint()
-
         # Run generation
         decision = await run_one(
             spec=repo_spec,

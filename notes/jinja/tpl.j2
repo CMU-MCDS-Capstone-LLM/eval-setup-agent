@@ -39,7 +39,7 @@ USER ${APP_USER}
 ENV XDG_CACHE_HOME=/home/${APP_USER}/.cache
 
 # Enforece installation of pytest, pytest-cov, coverage, so that testing agent can obtain coverage report of pytest
-RUN --mount=type=cache,target=/home/${APP_USER}/.cache/pip \
+RUN --mount=type=cache,target=/home/${APP_USER}/.cache/pip
     bash -lc 'set -euo pipefail; \
       python -m pip install --upgrade pip; \
       echo "+ pip install pytest pytest-cov coverage"; \

@@ -17,6 +17,4 @@ def make_env(templates_dir: Path) -> Environment:
     return Environment(
         loader=FileSystemLoader(str(templates_dir)),
         undefined=StrictUndefined,
-        trim_blocks=True,
-        lstrip_blocks=True,
     )

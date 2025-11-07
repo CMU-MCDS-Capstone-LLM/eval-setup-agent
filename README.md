@@ -4,6 +4,81 @@
 
   We need to expand and tune the prompt based on our old ones. Check out [the common prompting techniques](https://www.promptingguide.ai/techniques)
 
+- [ ] don't use separate variables `test_workdir`, `mount_dir`. Assume test runs in repo root (or sub folder of repo root?).
+
+- [x] Fill template sometimes cram two lines together
+
+  E.g. two RUN commands are crammed into one line due to incorrect variable expansion
+
+  ```Dockerfile
+  RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+      apt-get update && apt-get install -y --no-install-recommends \
+        build-essential pkg-config git ca-certificates \
+      && rm -rf /var/lib/apt/lists/*RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+      apt-get update && apt-get install -y --no-install-recommends \      build-essential \      libssl-dev \      libffi-dev \      libyaml-dev \    && rm -rf /var/lib/apt/lists/*
+  ```
+
+- [ ] Need to show the agent the data folder structure, the generated dockerfile, build.sh, and run.sh for better context
+
+- [x] Manually add pytest, pytest-cov, coverage as repo env deps
+
+- [ ] If `pip install -e .` is needed, let's do that in the run script instead of the build script.
+
+  In build script, we bind-mount repo, install the dependencies
+
+  When we want to run the container, we pass in something like
+
+  ```python
+  #!/usr/bin/env bash
+  set -euo pipefail
+
+  # Run tests in container
+  docker run --rm \
+    -v "/home/eiger/CMU/2025_Spring/11634_Capstone/playground/eval_env_setup/demo/new-example/repos/alice-biometrics_petisco__9abf7b1f6ef8c55bdddcb9a5c2eff513f6a93130":"/workspace" \
+    --user "$(id -u):$(id -g)" \
+    envsetup/alice-biometrics_petisco__9abf7b1f6ef8c55bdddcb9a5c2eff513f6a93130:tests \
+    bash -lc "pip install -e .[fixtures,rabbitmq,pymongo,elastic,sqlalchemy,fastapi,slack,redis,flask] && python -m pytest"
+  ```
+
+- [x] The current dockerfile context is a bit too broad
+
+  It use the entire data folder. This can be problem when we download multiple repos in the data folder, since docker build need to copy the entire context folder into its own workspace.
+
+  We can
+
+  - either refine the context into subfolder of data folder (that can make bind-mount hard since in build process, bind-mount's path need to be the path within context)
+
+  - or restructure the data folder
+
+    from
+
+    ```
+    data/
+    - envs/
+      - repo1/
+      - repo2/
+      - repo3/
+    - repos/
+      - repo1/
+      - repo2/
+      - repo3/
+    ```
+
+    to
+
+    ```
+    data
+      repo1/
+        env/
+        repo/
+      repo2/
+        env/
+        repo/
+      repo3/
+        env/
+        repo/
+    ```
+
 - [x] Generate run.sh and build.sh separately
 
 - [x] Don't copy the repo into image. Instead map it to the image

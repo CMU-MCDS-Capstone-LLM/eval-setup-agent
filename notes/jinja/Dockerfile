@@ -1,11 +1,6 @@
 # syntax=docker/dockerfile:1.7
-{#- REQUIRED:
-   python_version_tag, mount_dir, repo_bind_src, test_workdir,
-   app_user, project_apt_packages, env_vars, pip_deps,
-   install_editable, test_cmd
-#}
 
-ARG PYTHON_VERSION={{ python_version_tag }}
+ARG PYTHON_VERSION=3.11.13-slim
 FROM python:${PYTHON_VERSION}
 
 ENV DEBIAN_FRONTEND=noninteractive \
@@ -15,31 +10,28 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONUNBUFFERED=1 \
     LANG=C.UTF-8 \
     LC_ALL=C.UTF-8
-{%- for k, v in env_vars.items() %}
-ENV {{ k }}="{{ v }}"
-{%- endfor %}
+ENV aaa="111"
+ENV bbb="bbb-222"
+ENV ccc="[1, 2, 3]"
 
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     apt-get update && apt-get install -y --no-install-recommends \
       build-essential pkg-config git ca-certificates \
     && rm -rf /var/lib/apt/lists/*
-
-{%- if project_apt_packages and project_apt_packages|length > 0 %}
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     apt-get update && apt-get install -y --no-install-recommends \
-{%- for p in project_apt_packages %}
-      {{ p }} \
-{%- endfor %}
+      astgrep \
+      tree \
+      ripgrep \
     && rm -rf /var/lib/apt/lists/*
-{%- endif %}
 
-ARG APP_USER={{ app_user }}
-RUN useradd -m ${APP_USER} && mkdir -p {{ mount_dir }} && chown -R ${APP_USER}:${APP_USER} {{ mount_dir }}
+ARG APP_USER=appuser
+RUN useradd -m ${APP_USER} && mkdir -p /workspace && chown -R ${APP_USER}:${APP_USER} /workspace
 USER ${APP_USER}
 ENV XDG_CACHE_HOME=/home/${APP_USER}/.cache
 
 # Enforece installation of pytest, pytest-cov, coverage, so that testing agent can obtain coverage report of pytest
-RUN --mount=type=cache,target=/home/${APP_USER}/.cache/pip \
+RUN --mount=type=cache,target=/home/${APP_USER}/.cache/pip
     bash -lc 'set -euo pipefail; \
       python -m pip install --upgrade pip; \
       echo "+ pip install pytest pytest-cov coverage"; \
@@ -47,19 +39,19 @@ RUN --mount=type=cache,target=/home/${APP_USER}/.cache/pip \
       true'
 
 RUN --mount=type=cache,target=/home/${APP_USER}/.cache/pip \
-    --mount=type=bind,source={{ repo_bind_src }},target={{ mount_dir }},rw \
+    --mount=type=bind,source=repos/<myrepo>,target=/workspace,rw \
     bash -lc 'set -euo pipefail; \
-      cd "{{ test_workdir }}"; \
-{%- for step in pip_deps %}
-      echo "+ pip install {{ step }}"; \
-      pip install {{ step }}; \
-{%- endfor %}
-{%- if install_editable %}
+      cd "/workspace"; \
+      echo "+ pip install numpy"; \
+      pip install numpy; \
+      echo "+ pip install pandas"; \
+      pip install pandas; \
+      echo "+ pip install mypackage==3.1.10"; \
+      pip install mypackage==3.1.10; \
       echo "+ pip install -e ."; \
       pip install -e .; \
-{%- endif %}
       true'
 
-WORKDIR {{ test_workdir }}
-{% set _cmd = (test_cmd | default(["python","-m","pytest"])) %}
-CMD {{ _cmd | tojson }}
+WORKDIR /workspace
+
+CMD ["python", "-m", "pytest"]
