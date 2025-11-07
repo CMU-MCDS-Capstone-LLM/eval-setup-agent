@@ -12,6 +12,20 @@
 
   We need to expand and tune the prompt based on our old ones. Check out [the common prompting techniques](https://www.promptingguide.ai/techniques)
 
+- [ ] Need to show the agent the generated dockerfile, build.sh, and run.sh for better context
+
+  - [ ] Add more examples of
+    - external services
+    -
+
+- [ ] Add a comment on what's the current progress and next step, or why stucked, when failed due to max round exceeded
+
+- [ ] Add descriptions for each field in contract.json (description + example)
+
+- [ ] Refuse also when we need are in a monorepo, and a single pytest command won't be enough to run the test. For example, there are multiple python repos where each repo need a different configuration, such as two python microservices that requires different versions of python and different (maybe even conflicting) dependencies. Note that monorepo alone is not a sufficient reason to refuse: if you can simply configure all dependencies under a single python interpreter version, and run pytest directly in monorepo root folder, it's still fine.
+
+- [ ] Add an abstraction of the generated env (like pymigbench's Migration class), so that it's easier to integrate into pipeline
+
 - [x] don't use separate variables `test_workdir`, `mount_dir`. Assume test runs in subfolder relative to repo root. Thus, agent only supplies a decision of `test_worksubdir`, and we manually join it with `mount_dir`
 
 - [x] Fill template sometimes cram two lines together
@@ -27,16 +41,6 @@
   ```
 
 - [x] Render all templates using the same env (StrictUndefined)
-
-- [ ] Need to show the agent the generated dockerfile, build.sh, and run.sh for better context
-
-  - [ ] Add more examples of
-    - external services
-    -
-
-- [ ] Add a comment on what's the current progress and next step, or why stucked, when failed due to max round exceeded
-
-- [ ] Add descriptions for each field in conttract.json (description + example)
 
 - [x] Manually add pytest, pytest-cov, coverage as repo env deps
 
@@ -77,12 +81,7 @@
 - [x] Remove unnecessary code that are unrelated to the purpose of generation
 
   - e.g. data_root, the whole repo index thing
-
-- [ ] Refuse also when we need are in a monorepo, and a single pytest command won't be enough to run the test. For example, there are multiple python repos where each repo need a different configuration, such as two python microservices that requires different versions of python and different (maybe even conflicting) dependencies. Note that monorepo alone is not a sufficient reason to refuse: if you can simply configure all dependencies under a single python interpreter version, and run pytest directly in monorepo root folder, it's still fine.
-
 - [x] Modularize the save to env folder and iteration folder logic, and reuse for dockerfile, build.sh, run.sh
-
-- [ ] Add an abstraction of the generated env (like pymigbench's Migration class), so that it's easier to integrate into pipeline
 
 - [x] Run docker as app_user as well.
 
