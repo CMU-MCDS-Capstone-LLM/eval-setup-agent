@@ -222,7 +222,9 @@ ruff check .
 
 - [ ] Add a comment on what's the current progress and next step, or why stucked, when failed due to max round exceeded
 
-- [ ] Add descriptions for each field in contract.json (description + example)
+- [x] Add descriptions for each field in contract.json (description + example)
+
+- [ ] Switch from json to toml
 
 - [ ] Refuse also when we need are in a monorepo, and a single pytest command won't be enough to run the test. For example, there are multiple python repos where each repo need a different configuration, such as two python microservices that requires different versions of python and different (maybe even conflicting) dependencies. Note that monorepo alone is not a sufficient reason to refuse: if you can simply configure all dependencies under a single python interpreter version, and run pytest directly in monorepo root folder, it's still fine.
 
