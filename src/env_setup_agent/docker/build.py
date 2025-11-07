@@ -6,12 +6,7 @@ from ..core.enums import FailureReason
 from ..core.models import BuildResult
 
 
-def docker_build(
-    build_script_path: Path,
-    log_path: Path,
-    image_tag: str,
-    timeout_s: int = 1800
-) -> BuildResult:
+def docker_build(build_script_path: Path, log_path: Path, image_tag: str, timeout_s: int = 1800) -> BuildResult:
     """
     Build a Docker image using BuildKit by executing build.sh script.
 
@@ -30,30 +25,14 @@ def docker_build(
     log_path.parent.mkdir(parents=True, exist_ok=True)
 
     with log_path.open("w") as logf:
-        proc = subprocess.Popen(
-            [str(build_script_path)],
-            stdout=logf,
-            stderr=subprocess.STDOUT
-        )
+        proc = subprocess.Popen([str(build_script_path)], stdout=logf, stderr=subprocess.STDOUT)
         try:
             rc = proc.wait(timeout=timeout_s)
         except subprocess.TimeoutExpired:
             proc.kill()
-            return BuildResult(
-                False,
-                image_tag,
-                str(log_path),
-                FailureReason.DOCKER_TIMEOUT,
-                "build timeout"
-            )
+            return BuildResult(False, image_tag, str(log_path), FailureReason.DOCKER_TIMEOUT, "build timeout")
 
     if rc != 0:
-        return BuildResult(
-            False,
-            image_tag,
-            str(log_path),
-            FailureReason.BUILD_FAILED,
-            "docker build failed"
-        )
+        return BuildResult(False, image_tag, str(log_path), FailureReason.BUILD_FAILED, "docker build failed")
 
     return BuildResult(True, image_tag, str(log_path))

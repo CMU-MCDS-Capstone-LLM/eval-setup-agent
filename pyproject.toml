@@ -17,12 +17,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = [
-  "pytest>=7.0.0",
-  "pytest-asyncio>=0.21.0",
-  "black>=23.0.0",
-  "mypy>=1.0.0",
-]
+dev = ["pytest>=7.0.0", "pytest-asyncio>=0.21.0", "ruff>=0.6.8", "mypy>=1.0.0"]
 
 [project.scripts]
 env-setup-agent = "env_setup_agent.cli:main"
@@ -30,9 +25,24 @@ env-setup-agent = "env_setup_agent.cli:main"
 [tool.setuptools.packages.find]
 where = ["src"]
 
-[tool.black]
+[tool.ruff]
+target-version = "py311"
 line-length = 120
-target-version = ["py311"]
+src = ["src", "tests"]
+exclude = [".git", ".venv", "build", "dist", "__pycache__"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "auto"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+ignore = []
+
+[tool.ruff.lint.isort]
+combine-as-imports = true
+known-first-party = ["env_setup_agent"]
 
 [tool.mypy]
 python_version = "3.11"

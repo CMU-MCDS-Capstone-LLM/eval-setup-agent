@@ -86,7 +86,6 @@ PYTHON_RELEASES = {
     (2, 5): datetime(2006, 9, 19),
     (2, 6): datetime(2008, 10, 1),
     (2, 7): datetime(2010, 7, 3),
-
     (3, 0): datetime(2008, 12, 3),
     (3, 1): datetime(2009, 6, 27),
     (3, 2): datetime(2011, 2, 20),
@@ -106,16 +105,15 @@ PYTHON_RELEASES = {
 
 class CommitInfoFetcher:
     """Client for interacting with GitHub API."""
-    
+
     def __init__(self, github_token: str | None):
         if github_token is None or len(github_token) == 0:
             raise RuntimeError("We require a github token to be used to access GitHub, to avoid rate limiting.")
         self.github_token = github_token
         self.session = requests.Session()
-        self.session.headers.update({
-            "Authorization": f"token {github_token}",
-            "Accept": "application/vnd.github.v3+json"
-        })
+        self.session.headers.update(
+            {"Authorization": f"token {github_token}", "Accept": "application/vnd.github.v3+json"}
+        )
         self.logger = logging.getLogger(__name__)
 
     def _get_commit_metadata(self, repo: str, commit_sha: str) -> Dict | None:
@@ -123,13 +121,13 @@ class CommitInfoFetcher:
         Get the metadata of commit
         """
         url = f"https://api.github.com/repos/{repo}/commits/{commit_sha}"
-        
+
         try:
             response = self.session.get(url)
             response.raise_for_status()
-            
+
             return response.json()
-            
+
         except requests.exceptions.RequestException as e:
             self.logger.error(f"Error fetching commit {commit_sha} from {repo}: {e}")
             return None
@@ -173,7 +171,7 @@ class CommitInfoFetcher:
         """
         metadata = self._get_commit_metadata(repo, commit_sha)
         timestamp = self._get_commit_timestamp(repo, commit_sha)
-        
+
         if timestamp is None:
             raise ValueError(f"Failed to get commit info for commit {commit_sha} in repo {repo}")
 
@@ -181,13 +179,15 @@ class CommitInfoFetcher:
 
         if result is None:
             raise ValueError(f"Failed to get commit info for commit {commit_sha} in repo {repo}")
-            
+
         return result
+
 
 if __name__ == "__main__":
     github_token = os.getenv("GITHUB_TOKEN")
     fetcher = CommitInfoFetcher(github_token)
-    print(fetcher.infer_python_upper_bound_for_repo(
-        repo="spacetelescope/pysynphot",
-        commit_sha="5b80ada45d2eb5fcdcca8959d073713ab3e84c7b"
-    ))
+    print(
+        fetcher.infer_python_upper_bound_for_repo(
+            repo="spacetelescope/pysynphot", commit_sha="5b80ada45d2eb5fcdcca8959d073713ab3e84c7b"
+        )
+    )

@@ -11,9 +11,11 @@ from ..core.enums import Status
 from ..core import schema as schema_mod
 
 from ..utils.logging import get_logger
+
 logger = get_logger()
 
 # Utilities
+
 
 def first_json_object(s: str) -> Dict[str, Any]:
     """
@@ -66,13 +68,14 @@ def map_decision(obj: Dict[str, Any]) -> Decision:
             pip_deps=v.get("pip_deps", []),
             install_editable=bool(v.get("install_editable", False)),
             pip_loc_e_dep=v.get("pip_loc_e_dep"),
-            test_cmd=v.get("test_cmd", ["python", "-m", "pytest"])
+            test_cmd=v.get("test_cmd", ["python", "-m", "pytest"]),
         )
 
     return Decision(status, obj.get("reason"), variables, obj.get("evidence", {}))
 
 
 # Agent class
+
 
 class ClaudeRepoAgent:
     """
@@ -165,7 +168,9 @@ class ClaudeRepoAgent:
         Returns:
             Final Decision
         """
-        logger.debug(f"run(repo_name={repo_name}, commit_sha={commit_sha}, py_cap_minor={py_cap_minor}, max_rounds={max_rounds})")
+        logger.debug(
+            f"run(repo_name={repo_name}, commit_sha={commit_sha}, py_cap_minor={py_cap_minor}, max_rounds={max_rounds})"
+        )
 
         # Import here to avoid requiring SDK at module level
         try:
@@ -176,17 +181,9 @@ class ClaudeRepoAgent:
         logger.debug("")
 
         # Format initial prompt
-        repo_task = task_tpl.format(
-            repo_name=repo_name,
-            commit_sha=commit_sha,
-            python_cap_minor=py_cap_minor
-        )
+        repo_task = task_tpl.format(repo_name=repo_name, commit_sha=commit_sha, python_cap_minor=py_cap_minor)
         user0 = render_from_path(
-            init_tpl_path, {
-                "repo_task": repo_task,
-                "policy": policy_prompt,
-                "contract_json": contract_json
-            }
+            init_tpl_path, {"repo_task": repo_task, "policy": policy_prompt, "contract_json": contract_json}
         )
 
         # Configure client
@@ -195,7 +192,7 @@ class ClaudeRepoAgent:
             allowed_tools=["Glob", "Grep", "Read"],
             permission_mode="plan",
             cwd=str(self.repo_path),
-            model=self.model
+            model=self.model,
         )
 
         async with ClaudeSDKClient(options=options) as client:
@@ -216,11 +213,14 @@ class ClaudeRepoAgent:
                     return decision
 
                 prev_json = json.dumps(asdict(decision.variables), indent=2)
-                user_iter = render_from_path(iter_tpl_path, {
-                    "previous_vars_json": prev_json,
-                    "build_log_tail": build_tail[-32000:],
-                    "run_log_tail": run_tail[-32000:],
-                })
+                user_iter = render_from_path(
+                    iter_tpl_path,
+                    {
+                        "previous_vars_json": prev_json,
+                        "build_log_tail": build_tail[-32000:],
+                        "run_log_tail": run_tail[-32000:],
+                    },
+                )
                 decision = await self._ask(client, user_iter)
                 # from ..core.models import generate_dummy_decision
                 # decision = generate_dummy_decision()
@@ -230,9 +230,4 @@ class ClaudeRepoAgent:
 
                 rounds += 1
 
-        return Decision(
-            Status.REFUSE,
-            f"max rounds {max_rounds} reached",
-            None,
-            {"loop": ["max_rounds_exhausted"]}
-        )
+        return Decision(Status.REFUSE, f"max rounds {max_rounds} reached", None, {"loop": ["max_rounds_exhausted"]})

@@ -21,6 +21,7 @@ from .agent.claude_runner import ClaudeRepoAgent
 
 logger = logging.getLogger("env_setup_agent")
 
+
 async def run_one(
     spec: RepoSpec,
     python_cap_minor: Tuple[int, int],
@@ -31,7 +32,7 @@ async def run_one(
     model: str | None = None,
     max_rounds: int = 3,
     build_timeout_s: int = 1800,
-    run_timeout_s: int = 1800
+    run_timeout_s: int = 1800,
 ) -> Decision:
     """
     Run environment setup for a single repository.
@@ -56,14 +57,13 @@ async def run_one(
     logger.info(f"Max rounds: {max_rounds}")
 
     # Load prompt fragments
-    system_prompt = path_config.system_prompt_path.read_text() 
+    system_prompt = path_config.system_prompt_path.read_text()
     policy_prompt = path_config.policy_prompt_path.read_text()
     contract = path_config.contract_json_path.read_text()
-    repo_task = render_from_path(path_config.repo_task_tpl_path, {
-        "repo_name": spec.repo_name,
-        "commit_sha": spec.commit_sha,
-        "python_cap_minor": python_cap_minor
-    })
+    repo_task = render_from_path(
+        path_config.repo_task_tpl_path,
+        {"repo_name": spec.repo_name, "commit_sha": spec.commit_sha, "python_cap_minor": python_cap_minor},
+    )
 
     # Create agent
     logger.info("Initializing Claude agent")
@@ -106,59 +106,57 @@ async def run_one(
         # Merge config-provided and LLM-provided variables
         # Compute test_workdir from mount_dir + test_worksubdir
         dvars_dict = asdict(dvars)
-        test_worksubdir = dvars_dict.pop('test_worksubdir')
+        test_worksubdir = dvars_dict.pop("test_worksubdir")
         # test_workdir = os.path.join(mount_dir, test_worksubdir)
         test_workdir = str((Path(mount_dir) / test_worksubdir).resolve())
 
-        template_vars = {
-            'app_user': app_user,
-            'mount_dir': mount_dir,
-            'test_workdir': test_workdir,
-            **dvars_dict
-        }
+        template_vars = {"app_user": app_user, "mount_dir": mount_dir, "test_workdir": test_workdir, **dvars_dict}
         # Render Dockerfile, and save to both env dir and iteration dir (under env dir)
         logger.info("Render Dockerfile from templates")
         render_and_save(
             [
                 Path(spec.env_dir) / "Dockerfile",
                 iteration_dir / "Dockerfile",
-            ], 
+            ],
             path_config.dockerfile_tpl_path,
-            template_vars, None
+            template_vars,
+            None,
         )
 
         # Render build.sh and run.sh from templates
         logger.info("Rendering build.sh from templates")
         build_script_vars = {
-            'env_dir': str(Path(spec.env_dir).absolute()),
-            'image_tag': tag,
-            'repo_path': str(Path(spec.repo_path).absolute()),
+            "env_dir": str(Path(spec.env_dir).absolute()),
+            "image_tag": tag,
+            "repo_path": str(Path(spec.repo_path).absolute()),
         }
         render_and_save(
             [
                 Path(spec.env_dir) / "build.sh",
                 iteration_dir / "build.sh",
-            ], 
+            ],
             path_config.build_script_tpl_path,
-            build_script_vars, 0o755
+            build_script_vars,
+            0o755,
         )
         logger.info("Rendering run.sh from templates")
         run_script_vars = {
-            'repo_path': str(Path(spec.repo_path).absolute()),
-            'mount_dir': mount_dir,
-            'image_tag': tag,
-            'test_workdir': test_workdir,
-            'install_editable': dvars.install_editable,
-            'pip_loc_e_dep': dvars.pip_loc_e_dep,
-            'test_cmd': " ".join(dvars.test_cmd),
+            "repo_path": str(Path(spec.repo_path).absolute()),
+            "mount_dir": mount_dir,
+            "image_tag": tag,
+            "test_workdir": test_workdir,
+            "install_editable": dvars.install_editable,
+            "pip_loc_e_dep": dvars.pip_loc_e_dep,
+            "test_cmd": " ".join(dvars.test_cmd),
         }
         render_and_save(
             [
                 Path(spec.env_dir) / "run.sh",
                 iteration_dir / "run.sh",
-            ], 
+            ],
             path_config.run_script_tpl_path,
-            run_script_vars, 0o755
+            run_script_vars,
+            0o755,
         )
 
         # Build
@@ -167,7 +165,7 @@ async def run_one(
             build_script_path=Path(spec.env_dir) / "build.sh",
             log_path=iteration_dir / "build.log",
             image_tag=tag,
-            timeout_s=build_timeout_s
+            timeout_s=build_timeout_s,
         )
 
         build_tail = ""
@@ -184,7 +182,7 @@ async def run_one(
                 "success": False,
                 "build_success": False,
                 "classification": "build_failed",
-                "message": bres.message
+                "message": bres.message,
             }
             (iteration_dir / "result.json").write_text(json.dumps(result_data, indent=2))
 
@@ -195,9 +193,7 @@ async def run_one(
         # Run
         logger.info("Running tests in container")
         rc, run_log_path, status = docker_run(
-            run_script_path=Path(spec.env_dir) / "run.sh",
-            log_path=iteration_dir / "run.log",
-            timeout_s=run_timeout_s
+            run_script_path=Path(spec.env_dir) / "run.sh", log_path=iteration_dir / "run.log", timeout_s=run_timeout_s
         )
 
         run_tail = ""
@@ -218,7 +214,7 @@ async def run_one(
             "build_success": True,
             "test_returncode": rc,
             "classification": cls,
-            "message": f"Classification: {cls}"
+            "message": f"Classification: {cls}",
         }
         (iteration_dir / "result.json").write_text(json.dumps(result_data, indent=2))
 
@@ -270,7 +266,7 @@ async def run_one(
         "status": decision.status.value,
         "reason": decision.reason,
         "evidence": decision.evidence,
-        "variables": asdict(decision.variables) if decision.variables else None
+        "variables": asdict(decision.variables) if decision.variables else None,
     }
     decision_json.write_text(json.dumps(decision_data, indent=2))
     logger.debug(f"Wrote decision.json to {env_dir}")

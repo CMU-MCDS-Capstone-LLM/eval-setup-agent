@@ -26,6 +26,8 @@
 
 - [ ] Add an abstraction of the generated env (like pymigbench's Migration class), so that it's easier to integrate into pipeline
 
+- [ ] Format python code, and autoformat in lazyvim
+
 - [x] don't use separate variables `test_workdir`, `mount_dir`. Assume test runs in subfolder relative to repo root. Thus, agent only supplies a decision of `test_worksubdir`, and we manually join it with `mount_dir`
 
 - [x] Fill template sometimes cram two lines together

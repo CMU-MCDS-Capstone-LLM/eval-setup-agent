@@ -5,12 +5,14 @@ from enum import Enum
 
 class Status(str, Enum):
     """Status of the agent decision."""
+
     PROCEED = "proceed"
     REFUSE = "refuse"
 
 
 class FailureReason(str, Enum):
     """Reasons for failure during environment setup."""
+
     NO_TESTS_FOUND = "no_tests_found"
     EXTERNAL_SERVICE_REQUIRED = "external_service_required"
     BUILD_FAILED = "build_failed"

@@ -5,7 +5,8 @@ from typing import Optional, Self
 from pathlib import Path
 
 from .. import resources
-from .. import consts 
+from .. import consts
+
 
 def resolve_path(path_str: str, default: str | Path, require_exists: bool = False) -> Path:
     """
@@ -24,6 +25,7 @@ def resolve_path(path_str: str, default: str | Path, require_exists: bool = Fals
 @dataclass
 class AgentConfig:
     """Configuration for the Claude agent."""
+
     model: Optional[str] = None
     max_rounds: int = 3
     build_timeout_s: int = 1800
@@ -38,11 +40,13 @@ class AgentConfig:
             run_timeout_s=agent_data.get("run_timeout_s", consts.DEFAULT_RUN_TIMEOUT_S),
         )
 
+
 @dataclass
 class PathConfig:
     """Configuration for paths."""
+
     # prompt-related
-    contract_json_path: Path 
+    contract_json_path: Path
     initial_tpl_path: Path
     iterate_tpl_path: Path
     policy_prompt_path: Path
@@ -61,55 +65,52 @@ class PathConfig:
             contract_json_path=resolve_path(
                 paths_data.get("contract_json_path", ""),
                 resources.get_default_contract_json_path(),
-                require_exists=True
+                require_exists=True,
             ),
             initial_tpl_path=resolve_path(
-                paths_data.get("initial_tpl_path", ""),
-                resources.get_default_initial_tpl_path(),
-                require_exists=True
+                paths_data.get("initial_tpl_path", ""), resources.get_default_initial_tpl_path(), require_exists=True
             ),
             iterate_tpl_path=resolve_path(
-                paths_data.get("iterate_tpl_path", ""),
-                resources.get_default_iterate_tpl_path(),
-                require_exists=True
+                paths_data.get("iterate_tpl_path", ""), resources.get_default_iterate_tpl_path(), require_exists=True
             ),
             policy_prompt_path=resolve_path(
                 paths_data.get("policy_prompt_path", ""),
                 resources.get_default_policy_prompt_path(),
-                require_exists=True
+                require_exists=True,
             ),
             repo_task_tpl_path=resolve_path(
                 paths_data.get("repo_task_tpl_path", ""),
                 resources.get_default_repo_task_tpl_path(),
-                require_exists=True
+                require_exists=True,
             ),
             system_prompt_path=resolve_path(
                 paths_data.get("system_prompt_path", ""),
                 resources.get_default_system_prompt_path(),
-                require_exists=True
+                require_exists=True,
             ),
-
             # others
             dockerfile_tpl_path=resolve_path(
                 paths_data.get("dockerfile_tpl_path", ""),
                 resources.get_default_dockerfile_tpl_path(),
-                require_exists=True
+                require_exists=True,
             ),
             build_script_tpl_path=resolve_path(
                 paths_data.get("build_script_tpl_path", ""),
                 resources.get_default_build_script_tpl_path(),
-                require_exists=True
+                require_exists=True,
             ),
             run_script_tpl_path=resolve_path(
                 paths_data.get("run_script_tpl_path", ""),
                 resources.get_default_run_script_tpl_path(),
-                require_exists=True
+                require_exists=True,
             ),
         )
+
 
 @dataclass
 class EnvConfig:
     """Configuration for environment settings."""
+
     app_user: str
     mount_dir: str
 
@@ -117,13 +118,14 @@ class EnvConfig:
     def from_dict(cls, env_data: dict) -> Self:
         return cls(
             app_user=env_data.get("app_user", consts.DEFAULT_APP_USER),
-            mount_dir=env_data.get("mount_dir", consts.DEFAULT_MOUNT_DIR)
+            mount_dir=env_data.get("mount_dir", consts.DEFAULT_MOUNT_DIR),
         )
 
 
 @dataclass
 class Config:
     """Main configuration."""
+
     agent: AgentConfig
     paths: PathConfig
     env: EnvConfig

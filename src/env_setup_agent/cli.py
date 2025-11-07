@@ -50,7 +50,7 @@ def load_repo_spec(config_path: Path) -> RepoSpec:
         repo_name=repo_name,
         commit_sha=commit_sha,
         repo_path=str(repo_path.resolve()),
-        env_dir=str(env_dir.resolve())
+        env_dir=str(env_dir.resolve()),
     )
 
 
@@ -96,7 +96,9 @@ async def run_from_config(config_path: Path) -> int:
         # Python version cap is the maximal python major+minor version possible, based on the timestamp of migration commit
         commit_info_fetcher = CommitInfoFetcher(os.getenv("GITHUB_TOKEN"))
         python_cap = commit_info_fetcher.infer_python_upper_bound_for_repo(repo_spec.repo_name, repo_spec.commit_sha)
-        logger.info(f"Python version cap for commit {repo_spec.repo_name} @ {repo_spec.commit_sha}: {python_cap[0]}.{python_cap[1]}")
+        logger.info(
+            f"Python version cap for commit {repo_spec.repo_name} @ {repo_spec.commit_sha}: {python_cap[0]}.{python_cap[1]}"
+        )
 
         # Run generation
         decision = await run_one(
@@ -109,7 +111,7 @@ async def run_from_config(config_path: Path) -> int:
             model=config.agent.model,
             max_rounds=config.agent.max_rounds,
             build_timeout_s=config.agent.build_timeout_s,
-            run_timeout_s=config.agent.run_timeout_s
+            run_timeout_s=config.agent.run_timeout_s,
         )
 
         # Log final result
@@ -130,6 +132,7 @@ async def run_from_config(config_path: Path) -> int:
         logger = logging.getLogger(__name__)
         logger.error(f"Error: {e}")
         import traceback
+
         tb_str = traceback.format_exc()
         logger.error(tb_str)
         return 1
@@ -138,14 +141,9 @@ async def run_from_config(config_path: Path) -> int:
 def main() -> int:
     """Main entry point."""
     parser = argparse.ArgumentParser(
-        prog="env-setup-agent",
-        description="Generate Docker environment for a Python repository from YAML config"
+        prog="env-setup-agent", description="Generate Docker environment for a Python repository from YAML config"
     )
-    parser.add_argument(
-        "config",
-        type=Path,
-        help="Path to YAML config file"
-    )
+    parser.add_argument("config", type=Path, help="Path to YAML config file")
 
     args = parser.parse_args()
 

@@ -10,15 +10,17 @@ SCHEMA: Dict[str, Any] = {
     "properties": {
         "status": {"enum": ["proceed", "refuse"]},
         "reason": {"type": "string"},
-        "evidence": {
-            "type": "object",
-            "additionalProperties": {"type": "array", "items": {"type": "string"}}
-        },
+        "evidence": {"type": "object", "additionalProperties": {"type": "array", "items": {"type": "string"}}},
         "variables": {
             "type": "object",
             "required": [
-                "python_version_tag", "test_worksubdir", "project_apt_packages",
-                "env_vars", "pip_deps", "install_editable", "test_cmd"
+                "python_version_tag",
+                "test_worksubdir",
+                "project_apt_packages",
+                "env_vars",
+                "pip_deps",
+                "install_editable",
+                "test_cmd",
             ],
             "properties": {
                 "python_version_tag": {"type": "string", "pattern": r"^\d+\.\d+\.\d+-slim$"},
@@ -28,22 +30,16 @@ SCHEMA: Dict[str, Any] = {
                 "pip_deps": {"type": "array", "items": {"type": "string"}},
                 "install_editable": {"type": "boolean"},
                 "pip_loc_e_dep": {"type": "string"},
-                "test_cmd": {"type": "array", "items": {"type": "string"}}
+                "test_cmd": {"type": "array", "items": {"type": "string"}},
             },
-            "additionalProperties": False
-        }
+            "additionalProperties": False,
+        },
     },
     "allOf": [
-        {
-            "if": {"properties": {"status": {"const": "proceed"}}},
-            "then": {"required": ["variables"]}
-        },
-        {
-            "if": {"properties": {"status": {"const": "refuse"}}},
-            "then": {"required": ["reason"]}
-        }
+        {"if": {"properties": {"status": {"const": "proceed"}}}, "then": {"required": ["variables"]}},
+        {"if": {"properties": {"status": {"const": "refuse"}}}, "then": {"required": ["reason"]}},
     ],
-    "additionalProperties": False
+    "additionalProperties": False,
 }
 
 VALIDATOR = Draft202012Validator(SCHEMA)

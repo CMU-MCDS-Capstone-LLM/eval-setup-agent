@@ -7,9 +7,7 @@ from typing import Optional
 
 
 def setup_logging(
-    log_file: Optional[Path] = None,
-    level: int = logging.INFO,
-    name: str = "env_setup_agent"
+    log_file: Optional[Path] = None, level: int = logging.INFO, name: str = "env_setup_agent"
 ) -> logging.Logger:
     """
     Setup logging with both file and console handlers.
@@ -31,8 +29,7 @@ def setup_logging(
 
     # Create formatter
     formatter = logging.Formatter(
-        fmt="%(asctime)s [%(levelname)s] %(filename)s:%(lineno)d: %(message)s",
-        datefmt='%Y-%m-%d %H:%M:%S'
+        fmt="%(asctime)s [%(levelname)s] %(filename)s:%(lineno)d: %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
     )
 
     # Console handler (stdout)
@@ -44,7 +41,7 @@ def setup_logging(
     # File handler (if log_file provided)
     if log_file:
         log_file.parent.mkdir(parents=True, exist_ok=True)
-        file_handler = logging.FileHandler(log_file, mode='w')
+        file_handler = logging.FileHandler(log_file, mode="w")
         file_handler.setLevel(level)
         file_handler.setFormatter(formatter)
         logger.addHandler(file_handler)

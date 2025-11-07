@@ -5,11 +5,7 @@ from pathlib import Path
 from typing import Tuple
 
 
-def docker_run(
-    run_script_path: Path,
-    log_path: Path,
-    timeout_s: int = 1800
-) -> Tuple[int, str, str]:
+def docker_run(run_script_path: Path, log_path: Path, timeout_s: int = 1800) -> Tuple[int, str, str]:
     """
     Run tests in a Docker container by executing run.sh script.
 
@@ -27,11 +23,7 @@ def docker_run(
     log_path.parent.mkdir(parents=True, exist_ok=True)
 
     with log_path.open("w") as logf:
-        proc = subprocess.Popen(
-            [str(run_script_path)],
-            stdout=logf,
-            stderr=subprocess.STDOUT
-        )
+        proc = subprocess.Popen([str(run_script_path)], stdout=logf, stderr=subprocess.STDOUT)
         try:
             rc = proc.wait(timeout=timeout_s)
         except subprocess.TimeoutExpired:
