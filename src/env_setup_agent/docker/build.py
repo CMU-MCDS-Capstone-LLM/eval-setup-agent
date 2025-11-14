@@ -19,7 +19,7 @@ def docker_build(build_script_path: Path, log_path: Path, image_tag: str, timeou
     Returns:
         BuildResult with success status and log path
     """
-    assert build_script_path.exists(), f"build.sh not found at {build_script_path}"
+    assert build_script_path.exists(), f"build script not found at {build_script_path}"
     assert build_script_path.is_absolute(), f"build_script must be absolute path: {build_script_path}"
 
     log_path.parent.mkdir(parents=True, exist_ok=True)

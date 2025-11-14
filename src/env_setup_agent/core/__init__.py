@@ -1,15 +1,14 @@
 """Core data structures and utilities."""
 
-from .enums import Status, FailureReason
-from .models import RepoSpec, Facts, DockerVars, Decision, BuildResult, TestResult, generate_dummy_decision
+from .enums import DecisionStatus, FailureReason
+from .models import RepoSpec, DockerVars, Decision, BuildResult, TestResult, generate_dummy_decision
 from .schema import SCHEMA, VALIDATOR, validate_or_error
 from .summarize import write_summary
 
 __all__ = [
-    "Status",
+    "DecisionStatus",
     "FailureReason",
     "RepoSpec",
-    "Facts",
     "DockerVars",
     "Decision",
     "BuildResult",

@@ -17,7 +17,7 @@ def docker_run(run_script_path: Path, log_path: Path, timeout_s: int = 1800) -> 
         Tuple of (return_code, log_path, status)
         status is "ok" or "timeout"
     """
-    assert run_script_path.exists(), f"run.sh not found at {run_script_path}"
+    assert run_script_path.exists(), f"run script not found at {run_script_path}"
     assert run_script_path.is_absolute(), f"run_script must be absolute path: {run_script_path}"
 
     log_path.parent.mkdir(parents=True, exist_ok=True)

@@ -2,7 +2,7 @@
 
 from pathlib import Path
 from .models import RepoSpec, Decision
-from .enums import Status
+from .enums import DecisionStatus
 
 
 def write_summary(env_dir: Path, spec: RepoSpec, decision: Decision) -> None:
@@ -16,7 +16,7 @@ def write_summary(env_dir: Path, spec: RepoSpec, decision: Decision) -> None:
     """
     p = env_dir / "summary.md"
 
-    if decision.status is Status.PROCEED and decision.variables:
+    if decision.status is DecisionStatus.PROCEED and decision.variables:
         v = decision.variables
         apt_list = ", ".join(v.project_apt_packages) if v.project_apt_packages else "(none)"
         pip_list = ", ".join(v.pip_deps) if v.pip_deps else "(none)"

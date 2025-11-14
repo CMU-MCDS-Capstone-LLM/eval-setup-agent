@@ -1,9 +1,13 @@
 """Core enumerations for env_setup_agent."""
 
 from enum import Enum
+from pathlib import Path
+from typing import Self
+
+from env_setup_agent.consts.common import FAILURE_FLAG_FILENAME, SUCCESS_FLAG_FILENAME
 
 
-class Status(str, Enum):
+class DecisionStatus(str, Enum):
     """Status of the agent decision."""
 
     PROCEED = "proceed"

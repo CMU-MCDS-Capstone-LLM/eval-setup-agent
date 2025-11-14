@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Optional, Tuple, Callable, Awaitable
 
 from ..templating.render import render_from_path
 from ..core.models import Decision, DockerVars
-from ..core.enums import Status
+from ..core.enums import DecisionStatus
 from ..core import schema as schema_mod
 
 from ..utils.logging import get_logger
@@ -53,12 +53,12 @@ def map_decision(obj: Dict[str, Any]) -> Decision:
     """
     err = schema_mod.validate_or_error(obj)
     if err:
-        return Decision(Status.REFUSE, f"invalid output: {err}", None, {})
+        return Decision(DecisionStatus.REFUSE, f"invalid output: {err}", None, {})
 
-    status = Status(obj["status"])
+    status = DecisionStatus(obj["status"])
     variables = None
 
-    if status is Status.PROCEED:
+    if status is DecisionStatus.PROCEED:
         v = obj["variables"]
         variables = DockerVars(
             python_version_tag=v["python_version_tag"],
@@ -114,7 +114,7 @@ class ClaudeRepoAgent:
             from claude_agent_sdk import AssistantMessage, TextBlock, ToolUseBlock
         except ImportError:
             # Fallback for development/testing
-            return Decision(Status.REFUSE, "Claude SDK not available", None, {})
+            return Decision(DecisionStatus.REFUSE, "Claude SDK not available", None, {})
 
         await client.query(user_text)
         chunks: List[str] = []
@@ -135,7 +135,7 @@ class ClaudeRepoAgent:
             raw = first_json_object("".join(chunks))
         except Exception as e:
             # TODO: If invalid output, should proceed but should not build and run
-            return Decision(Status.REFUSE, f"invalid output: {e}", None, {})
+            return Decision(DecisionStatus.REFUSE, f"invalid output: {e}", None, {})
 
         return map_decision(raw)
 
@@ -178,7 +178,7 @@ class ClaudeRepoAgent:
         try:
             from claude_agent_sdk import ClaudeSDKClient, ClaudeAgentOptions
         except ImportError:
-            return Decision(Status.REFUSE, "Claude SDK not available", None, {})
+            return Decision(DecisionStatus.REFUSE, "Claude SDK not available", None, {})
 
         logger.debug("")
 
@@ -203,7 +203,7 @@ class ClaudeRepoAgent:
             # decision = generate_dummy_decision()
 
             # TODO: If failure is due to json parsing error, show error message to claude, and retry at most output_retries times
-            if decision.status is Status.REFUSE:
+            if decision.status is DecisionStatus.REFUSE:
                 return decision
 
             rounds = 1
@@ -228,9 +228,11 @@ class ClaudeRepoAgent:
                 # from ..core.models import generate_dummy_decision
                 # decision = generate_dummy_decision()
 
-                if decision.status is Status.REFUSE:
+                if decision.status is DecisionStatus.REFUSE:
                     return decision
 
                 rounds += 1
 
-        return Decision(Status.REFUSE, f"max rounds {max_rounds} reached", None, {"loop": ["max_rounds_exhausted"]})
+        return Decision(
+            DecisionStatus.REFUSE, f"max rounds {max_rounds} reached", None, {"loop": ["max_rounds_exhausted"]}
+        )

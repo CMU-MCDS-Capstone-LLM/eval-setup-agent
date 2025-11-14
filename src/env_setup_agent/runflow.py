@@ -7,10 +7,13 @@ from pathlib import Path
 from typing import List, Tuple
 from pathlib import Path
 
+from env_setup_agent.consts.docker import DEFAULT_DOCKER_BUILD_SCRIPT_FILENAME, DEFAULT_DOCKER_RUN_SCRIPT_FILENAME
+
+from .consts import DECISION_JSON_FILENAME
 from .config.model import AgentConfig, EnvConfig, PathConfig
 from .docker import get_image_tag
 from .core.models import RepoSpec, Decision, DockerVars
-from .core.enums import Status
+from .core.enums import DecisionStatus
 from .core.summarize import write_summary
 from .templating.jinja_env import make_env
 from .templating.render import render_from_path, render_and_save
@@ -90,7 +93,7 @@ async def run_one(
 
         # Save the decision JSON for this iteration
         decision_data = asdict(dvars)
-        decision_json_path = iteration_dir / "decision.json"
+        decision_json_path = iteration_dir / DECISION_JSON_FILENAME
         decision_json_path.write_text(json.dumps(decision_data, indent=2))
         logger.debug(f"Saved decision JSON to {decision_json_path}")
 
@@ -125,7 +128,7 @@ async def run_one(
         )
 
         # Render build.sh and run.sh from templates
-        logger.info("Rendering build.sh from templates")
+        logger.info("Rendering build script from templates")
         build_script_vars = {
             "env_dir": str(Path(spec.env_dir).absolute()),
             "image_tag": tag,
@@ -133,14 +136,14 @@ async def run_one(
         }
         render_and_save(
             [
-                Path(spec.env_dir) / "build.sh",
-                iteration_dir / "build.sh",
+                Path(spec.env_dir) / DEFAULT_DOCKER_BUILD_SCRIPT_FILENAME,
+                iteration_dir / DEFAULT_DOCKER_BUILD_SCRIPT_FILENAME,
             ],
             path_config.build_script_tpl_path,
             build_script_vars,
             0o755,
         )
-        logger.info("Rendering run.sh from templates")
+        logger.info("Rendering run script from templates")
         run_script_vars = {
             "repo_path": str(Path(spec.repo_path).absolute()),
             "mount_dir": env_config.mount_dir,
@@ -152,8 +155,8 @@ async def run_one(
         }
         render_and_save(
             [
-                Path(spec.env_dir) / "run.sh",
-                iteration_dir / "run.sh",
+                Path(spec.env_dir) / DEFAULT_DOCKER_RUN_SCRIPT_FILENAME,
+                iteration_dir / DEFAULT_DOCKER_RUN_SCRIPT_FILENAME,
             ],
             path_config.run_script_tpl_path,
             run_script_vars,
@@ -163,7 +166,7 @@ async def run_one(
         # Build
         logger.info(f"Building Docker image: {tag}")
         bres = docker_build(
-            build_script_path=Path(spec.env_dir) / "build.sh",
+            build_script_path=Path(spec.env_dir) / DEFAULT_DOCKER_BUILD_SCRIPT_FILENAME,
             log_path=iteration_dir / "build.log",
             image_tag=tag,
             timeout_s=agent_config.build_timeout_s,
@@ -194,7 +197,7 @@ async def run_one(
         # Run
         logger.info("Running tests in container")
         rc, run_log_path, status = docker_run(
-            run_script_path=Path(spec.env_dir) / "run.sh",
+            run_script_path=Path(spec.env_dir) / DEFAULT_DOCKER_RUN_SCRIPT_FILENAME,
             log_path=iteration_dir / "run.log",
             timeout_s=agent_config.run_timeout_s,
         )
@@ -250,7 +253,7 @@ async def run_one(
     env_dir.mkdir(parents=True, exist_ok=True)
 
     # Write success/failure marker
-    if decision.status is Status.PROCEED:
+    if decision.status is DecisionStatus.PROCEED:
         logger.info("✓ Generation successful")
         (env_dir / "_SUCCESS").write_text("")
     else:
@@ -265,7 +268,7 @@ async def run_one(
     logger.debug(f"Wrote summary.md to {env_dir}")
 
     # Write final decision JSON (at root level)
-    decision_json = env_dir / "decision.json"
+    decision_json = env_dir / DECISION_JSON_FILENAME
     decision_data = {
         "status": decision.status.value,
         "reason": decision.reason,
@@ -273,7 +276,7 @@ async def run_one(
         "variables": asdict(decision.variables) if decision.variables else None,
     }
     decision_json.write_text(json.dumps(decision_data, indent=2))
-    logger.debug(f"Wrote decision.json to {env_dir}")
+    logger.debug(f"Wrote {DECISION_JSON_FILENAME} to {env_dir}")
 
     logger.info(f"Environment setup complete for {spec.env_id}")
     if iteration_counter["count"] > 0:
