@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import List, Tuple
 from pathlib import Path
 
-from .config.model import PathConfig
+from .config.model import AgentConfig, EnvConfig, PathConfig
 from .docker import get_image_tag
 from .core.models import RepoSpec, Decision, DockerVars
 from .core.enums import Status
@@ -27,12 +27,8 @@ async def run_one(
     python_cap_minor: Tuple[int, int],
     env_id: str,
     path_config: PathConfig,
-    app_user: str,
-    mount_dir: str,
-    model: str | None = None,
-    max_rounds: int = 3,
-    build_timeout_s: int = 1800,
-    run_timeout_s: int = 1800,
+    env_config: EnvConfig,
+    agent_config: AgentConfig,
 ) -> Decision:
     """
     Run environment setup for a single repository.
@@ -54,7 +50,7 @@ async def run_one(
     logger.info(f"Starting environment setup for {spec.repo_name} @ {spec.commit_sha}")
     logger.info(f"Environment ID: {spec.env_id}")
     logger.info(f"Python cap: {python_cap_minor[0]}.{python_cap_minor[1]}")
-    logger.info(f"Max rounds: {max_rounds}")
+    logger.info(f"Max rounds: {agent_config.max_rounds}")
 
     # Load prompt fragments
     system_prompt = path_config.system_prompt_path.read_text()
@@ -67,7 +63,7 @@ async def run_one(
 
     # Create agent
     logger.info("Initializing Claude agent")
-    agent = ClaudeRepoAgent(repo_path=Path(spec.repo_path), model=model)
+    agent = ClaudeRepoAgent(repo_path=Path(spec.repo_path), model=agent_config.model)
 
     # Track iteration number for saving artifacts
     iteration_counter = {"count": 0}
@@ -108,9 +104,14 @@ async def run_one(
         dvars_dict = asdict(dvars)
         test_worksubdir = dvars_dict.pop("test_worksubdir")
         # test_workdir = os.path.join(mount_dir, test_worksubdir)
-        test_workdir = str((Path(mount_dir) / test_worksubdir).resolve())
+        test_workdir = str((Path(env_config.mount_dir) / test_worksubdir).resolve())
 
-        template_vars = {"app_user": app_user, "mount_dir": mount_dir, "test_workdir": test_workdir, **dvars_dict}
+        template_vars = {
+            "app_user": env_config.app_user,
+            "mount_dir": env_config.mount_dir,
+            "test_workdir": test_workdir,
+            **dvars_dict,
+        }
         # Render Dockerfile, and save to both env dir and iteration dir (under env dir)
         logger.info("Render Dockerfile from templates")
         render_and_save(
@@ -142,7 +143,7 @@ async def run_one(
         logger.info("Rendering run.sh from templates")
         run_script_vars = {
             "repo_path": str(Path(spec.repo_path).absolute()),
-            "mount_dir": mount_dir,
+            "mount_dir": env_config.mount_dir,
             "image_tag": tag,
             "test_workdir": test_workdir,
             "install_editable": dvars.install_editable,
@@ -165,7 +166,7 @@ async def run_one(
             build_script_path=Path(spec.env_dir) / "build.sh",
             log_path=iteration_dir / "build.log",
             image_tag=tag,
-            timeout_s=build_timeout_s,
+            timeout_s=agent_config.build_timeout_s,
         )
 
         build_tail = ""
@@ -193,7 +194,9 @@ async def run_one(
         # Run
         logger.info("Running tests in container")
         rc, run_log_path, status = docker_run(
-            run_script_path=Path(spec.env_dir) / "run.sh", log_path=iteration_dir / "run.log", timeout_s=run_timeout_s
+            run_script_path=Path(spec.env_dir) / "run.sh",
+            log_path=iteration_dir / "run.log",
+            timeout_s=agent_config.run_timeout_s,
         )
 
         run_tail = ""
@@ -233,7 +236,8 @@ async def run_one(
         contract_json=contract,
         init_tpl_path=path_config.initial_tpl_path,
         iter_tpl_path=path_config.iterate_tpl_path,
-        max_rounds=max_rounds,
+        max_rounds=agent_config.max_rounds,
+        output_retries=agent_config.output_retries,
     )
 
     logger.info(f"Agent completed with status: {decision.status.value}")

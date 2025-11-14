@@ -1,0 +1,27 @@
+# Environment Setup Agent Configuration
+# This file configures the agent to generate a Docker environment for the repository
+
+# Repository information
+repository:
+  env_id: "alice-biometrics_petisco__9abf7b1f6ef8c55bdddcb9a5c2eff513f6a93130"
+  repo_name: "alice-biometrics/petisco"
+  commit_sha: "9abf7b1f6ef8c55bdddcb9a5c2eff513f6a93130"
+
+  repo_path: "/home/eiger/CMU/2025_Spring/11634_Capstone/playground/eval_env_setup/demo/example/repos/alice-biometrics_petisco__9abf7b1f6ef8c55bdddcb9a5c2eff513f6a93130"
+  env_dir: "/home/eiger/CMU/2025_Spring/11634_Capstone/playground/eval_env_setup/demo/example/envs/alice-biometrics_petisco__9abf7b1f6ef8c55bdddcb9a5c2eff513f6a93130"
+
+# Agent configuration
+agent:
+  model: null # Use default Claude model (or set to "claude-sonnet-4", etc.)
+  max_rounds: 3
+  build_timeout_s: 600 # 10 minutes
+  run_timeout_s: 600 # 10 minutes
+
+# Path configuration (relative to repo root or absolute)
+# Used by docker
+# By default, we will use the built-in prompts that comes with the env_setup_agent package. You can overwrite it by specifying path to prompts_dir and templates_dir
+# You can refer to the folder `resources/configs/prompts` for an example
+# If you want to provide custom prompts and templates dir, add a path config like below
+# paths:
+#   prompts_dir: "xxx"
+#   templates_dir: "xxx"

@@ -30,6 +30,11 @@ class AgentConfig:
     max_rounds: int = 3
     build_timeout_s: int = 1800
     run_timeout_s: int = 1800
+    output_retries: int = 2
+    # If there exists a successful run, should we overwrite it?
+    overwrite_success: bool = False
+    # If there exists a failed run, should we overwrite it?
+    overwrite_failure: bool = False
 
     @classmethod
     def from_dict(cls, agent_data: dict) -> Self:
@@ -38,6 +43,9 @@ class AgentConfig:
             max_rounds=agent_data.get("max_rounds", consts.DEFAULT_MAX_ROUNDS),
             build_timeout_s=agent_data.get("build_timeout_s", consts.DEFAULT_BUILD_TIMEOUT_S),
             run_timeout_s=agent_data.get("run_timeout_s", consts.DEFAULT_RUN_TIMEOUT_S),
+            output_retries=agent_data.get("output_retries", consts.DEFAULT_OUTPUT_RETRIES),
+            overwrite_success=agent_data.get("overwrite_success", False),
+            overwrite_failure=agent_data.get("overwrite_failure", False),
         )
 
 

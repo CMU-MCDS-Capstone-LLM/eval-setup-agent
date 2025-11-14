@@ -210,23 +210,21 @@ ruff check .
 
   This is meant to explore more unexpected cases that our prompt failed to cover.
 
-- [ ] Make the prompt more detailed to avoid unneeded failure
+- [x] Make the prompt more detailed to avoid unneeded failure
 
   We need to expand and tune the prompt based on our old ones. Check out [the common prompting techniques](https://www.promptingguide.ai/techniques)
 
-- [ ] Need to show the agent the generated dockerfile, build.sh, and run.sh for better context
+- [x] Need to show the agent the generated dockerfile, build.sh, and run.sh for better context
 
-  - [ ] Add more examples of
-    - external services
-    -
+  - [x] Add more examples
 
 - [ ] Add a comment on what's the current progress and next step, or why stucked, when failed due to max round exceeded
 
+- [ ] We should not refuse simply because of agent generating malformed json. In that case, we should retry.
+
 - [x] Add descriptions for each field in contract.json (description + example)
 
-- [ ] Switch from json to toml
-
-- [ ] Refuse also when we need are in a monorepo, and a single pytest command won't be enough to run the test. For example, there are multiple python repos where each repo need a different configuration, such as two python microservices that requires different versions of python and different (maybe even conflicting) dependencies. Note that monorepo alone is not a sufficient reason to refuse: if you can simply configure all dependencies under a single python interpreter version, and run pytest directly in monorepo root folder, it's still fine.
+- [x] Refuse also when we need are in a monorepo, and a single pytest command won't be enough to run the test. For example, there are multiple python repos where each repo need a different configuration, such as two python microservices that requires different versions of python and different (maybe even conflicting) dependencies. Note that monorepo alone is not a sufficient reason to refuse: if you can simply configure all dependencies under a single python interpreter version, and run pytest directly in monorepo root folder, it's still fine.
 
 - [ ] Add an abstraction of the generated env (like pymigbench's Migration class), so that it's easier to integrate into pipeline
 

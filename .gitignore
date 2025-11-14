@@ -4,7 +4,8 @@ __pycache__/
 draft/
 examples/repos/
 repos/
-demo/
 envs/
 !notes/dockerfile-exp/envs
 *.egg-info/
+.ruff_cache/
+

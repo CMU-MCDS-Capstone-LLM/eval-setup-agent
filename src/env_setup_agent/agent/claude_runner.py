@@ -134,6 +134,7 @@ class ClaudeRepoAgent:
         try:
             raw = first_json_object("".join(chunks))
         except Exception as e:
+            # TODO: If invalid output, should proceed but should not build and run
             return Decision(Status.REFUSE, f"invalid output: {e}", None, {})
 
         return map_decision(raw)
@@ -150,7 +151,8 @@ class ClaudeRepoAgent:
         contract_json: str,
         init_tpl_path: Path,
         iter_tpl_path: Path,
-        max_rounds: int = 3,
+        max_rounds: int,
+        output_retries: int,
     ) -> Decision:
         """
         Run agent with iteration.
@@ -200,6 +202,7 @@ class ClaudeRepoAgent:
             # from ..core.models import generate_dummy_decision
             # decision = generate_dummy_decision()
 
+            # TODO: If failure is due to json parsing error, show error message to claude, and retry at most output_retries times
             if decision.status is Status.REFUSE:
                 return decision
 

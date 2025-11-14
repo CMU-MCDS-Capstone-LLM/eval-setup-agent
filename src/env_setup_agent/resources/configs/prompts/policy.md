@@ -1,28 +1,31 @@
 ## Policy
 
-- Proceed only if tests can run with: Python interpreter, Python deps, system libs, and direct pytest.
-- Refuse if one of the following:
-  - no unit tests;
+- Proceed only if tests can run with: a Python interpreter, Python dependencies, system libraries, and a direct pytest invocation.
+- Proceed if the Docker image builds and the container executes the test command successfully, even when pytest returns a non-zero exit status due to failing tests. Refuse only for environment/setup failures (build errors, dependency install/runtime errors, policy violations).
+- Refuse if one of the following holds:
+  - no unit tests are present;
   - all unit tests are skipped;
-  - external long-running services are required, unless tests self-spawn/manage them, or tests involving external services are skipped.
-    If the unit tests expect access to an external services like databases, message queues, GitHub Actions services, etc, refuse.
-    However, if external services are detected but tests use mocking or self-contained test fixtures, you may proceed.
-    Also, if some tests depending on external services are skipped, you may also proceed unless all tests are skipped.
-- You should install directly in the docker's env, instead of in a virtial env running in docker.
-- No services started in Dockerfile.
-- Image base: `python:X.Y-slim` with X.Y <= the detected upper bound. The upper bound is inferred from the timestamp of the repo's last commit, so it's impossible for the chosen python interpreter to have a higher version.
-- If a test is skipped, ignore it and don't refuse because of its content. This means, even if a skipped test violate any of the rule of a valid case (e.g. depending on external service), we won't refuse the generation because the test is skipped.
-  - However, if all tests are skipped, refuse to generate.
-- Always prefer install from requirements files provided in the repo (e.g. `pip install -r requirements.txt`) over manually specify the packages (e.g. `pip install numpy==2.3.0`). Use manual method only when there exists package conflicts, and you must manually resolve it (since you can't modify the provided repo).
+  - external long-running services are required and the tests do not self-spawn/manage them and are not skipped/mocked.
+    Presence of external-service configs (e.g., `docker-compose.yml`) by itself is not grounds to refuse; refuse only if those services are actually required for the test run and can not be skipped or mocked.
+    If you refuse for this reason, always make sure the test involving external tests cannot be skipped or mocked by installing certain packages or setting certain environment variables.
+- Install packages into the container’s base environment (no virtualenv inside the container).
+- No services are started in the Dockerfile.
+- Image base: `python:X.Y-slim` with `X.Y` <= the detected upper bound. The upper bound provided to you is inferred from the timestamp of the repo’s commit; choose the highest available **patch** within that minor.
+- If a test is skipped, ignore its content when deciding to proceed/refuse. (A skipped test that would otherwise violate policy does not force refusal.)
+  - However, if **all** tests are skipped, refuse to generate.
+- Prefer installing from repository requirements files (e.g., `pip install -r requirements.txt`) over listing individual packages. Only pin direct packages when needed to resolve conflicts; justify such choices in evidence.
+- Never include `-e .` in `pip_deps`. If an editable install is required, set `install_editable: true` and provide `pip_loc_e_dep` (e.g., `".[test]"`), which will be installed at **runtime** in `run.sh` (not during image build).
+- Monorepos: proceed only if a **single** `test_worksubdir` yields a coherent unit-test run. Refuse when multiple subtrees require incompatible Python/dependency sets that cannot be satisfied by one environment.
+- Always install the most comprehensive dependencies (unless conflicts exist), since running unit tests usually requires more dependencies than simply using the codebase.
 
 ### Additional Context: Proceed & Refuse Examples (with minimal guidance)
 
-Below are compact, realistic examples to anchor output quality, plus small snippets to show how fields are used. Do **not** copy versions/paths blindly - adapt to the current repo and commit.
+Below are compact, realistic examples to anchor output quality, plus small snippets to show how fields are used. Do **not** copy versions/paths blindly—adapt to the current repo and commit.
 
 PROCEED — JSON example
 {
   "status": "proceed",
-  "reason": null,
+  "reason": "",
   "evidence": {
     "tests_exist": [
       "tests/test_api.py contains pytest tests",
@@ -58,7 +61,7 @@ PROCEED — JSON example
 REFUSE — JSON example
 {
   "status": "refuse",
-  "reason": "no unit tests detected; only integration suite requires external services (postgres, redis) with no mocks; all tests marked 'integration' and not skipped",
+  "reason": "no unit tests detected; integration suite requires external services (postgres, redis) with no mocks; tests not skipped",
   "evidence": {
     "tests_exist": [
       "no files matching 'tests/**/test_*.py' or '*_test.py'"
@@ -70,8 +73,11 @@ REFUSE — JSON example
   }
 }
 
-Dockerfile (template extract, aligned to current vars)
+Your generated variables will be used to render the following jinja2 templates to build env and run test. Variables not mentioned in the contract json are provided by an input config you don't need to know.
 
+Dockerfile jinja2 template
+
+```Dockerfile
 # syntax=docker/dockerfile:1.7
 
 ARG PYTHON_VERSION={{ python_version_tag }}
@@ -115,9 +121,11 @@ RUN useradd -m -s /bin/bash {{ app_user }} \
 USER {{ app_user }}
 
 WORKDIR {{ test_workdir }}
+```
 
-build.sh (template extract)
+build.sh jinja2 template
 
+```bash
 # !/usr/bin/env bash
 
 set -euo pipefail
@@ -127,9 +135,11 @@ IMAGE_TAG="{{ image_tag }}"
 REPO_PATH="{{ repo_path }}"
 
 docker build -f "$ENV_DIR/Dockerfile" -t "$IMAGE_TAG" "$REPO_PATH"
+```
 
-run.sh (template extract)
+run.sh jinja2 template
 
+```bash
 # !/usr/bin/env bash
 
 set -euo pipefail
@@ -143,19 +153,21 @@ docker run --rm \
   -v "$REPO_PATH":"$MOUNT_DIR" \
   --user "$(id -u):$(id -g)" \
   "$IMAGE_TAG" \
-  bash -lc '{% if install_editable %}pip install -e {{ pip_loc_e_dep }} && {% endif %}cd "{{ TEST_WORKDIR }}" && {{ test_cmd }}'
+  bash -lc "{% if install_editable %}pip install -e '{{ pip_loc_e_dep }}' && {% endif %}cd '{{ TEST_WORKDIR }}' && {{ test_cmd }}"
+```
 
-Evidence format tips (keep it short, file-first):
+Evidence format tips:
 
-- tests_exist: "tests/test_*.py", "src/pkg/tests/…", "pytest.ini present"
-- python_version_constraints: "tox.ini envlist=py311", "CI matrix: 3.10, 3.11"
-- dependency_manifests: "requirements*.txt", "pyproject.toml [project.optional-dependencies].test"
-- external_services (if any): "docker-compose.yml: postgres"; note if those tests are skipped/mocked
+- Prefer path + precise anchor: `path:line` or a short quoted snippet showing the key marker (e.g., `envlist = py311`).
+- tests_exist: `tests/test_*.py`, `src/pkg/tests/...`, `pytest.ini present`
+- python_version_constraints: `tox.ini: envlist=py311`, `CI matrix: 3.10, 3.11`
+- dependency_manifests: `requirements*.txt`, `pyproject.toml [project.optional-dependencies].test`
+- external_services (if any): `docker-compose.yml: postgres`; note if those tests are skipped/mocked
 
 Non-obvious guardrails (beyond the schema):
 
 - Use the highest patch for `python_version_tag` within the provided cap (major.minor).
 - `test_worksubdir` is relative (e.g., ".", "backend"); choose the smallest subdir that contains and runs the unit tests.
-- Prefer requirements files in `pip_deps`; ensure referenced files exist. Add direct packages only if necessary.
-- Keep `project_apt_packages` minimal and justified by Python deps (e.g., psycopg2 -> libpq-dev; lxml -> libxml2-dev libxslt1-dev).
-- `test_cmd` is argv only (no shell operators); editable install happens at runtime before `test_cmd` is executed, not during image build.
+- Prefer requirements files in `pip_deps`; ensure referenced files exist. Add direct packages only if necessary and justify.
+- Keep `project_apt_packages` minimal and justified by Python deps (e.g., psycopg2 → libpq-dev; lxml → libxml2-dev libxslt1-dev).
+- `test_cmd` is argv only (no shell operators). Editable install happens at runtime before `test_cmd` executes, not during image build.

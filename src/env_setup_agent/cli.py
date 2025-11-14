@@ -3,6 +3,7 @@
 import asyncio
 import argparse
 import sys
+from time import time
 import yaml
 from pathlib import Path
 import os
@@ -86,6 +87,17 @@ async def run_from_config(config_path: Path) -> int:
         logger.debug(f"Loaded config: {config}")
         logger.debug(f"Loaded repo_spec: {repo_spec}")
 
+        if not config.agent.overwrite_success and (env_dir / "_SUCCESS").exists():
+            logger.info(
+                f"A previous successful run is found, and overwrite_success is set to False. Skip {repo_spec.env_id}"
+            )
+            return 0
+        if not config.agent.overwrite_failure and (env_dir / "_FAILURE").exists():
+            logger.info(
+                f"A previous failed run is found, and overwrite_failure is set to False. Skip {repo_spec.env_id}"
+            )
+            return 0
+
         # Validate repo path exists
         repo_path = Path(repo_spec.repo_path)
         if not repo_path.exists():
@@ -101,18 +113,19 @@ async def run_from_config(config_path: Path) -> int:
         )
 
         # Run generation
+
+        start_time = time()
         decision = await run_one(
             spec=repo_spec,
             python_cap_minor=python_cap,
             env_id=repo_spec.env_id,
             path_config=config.paths,
-            app_user=config.env.app_user,
-            mount_dir=config.env.mount_dir,
-            model=config.agent.model,
-            max_rounds=config.agent.max_rounds,
-            build_timeout_s=config.agent.build_timeout_s,
-            run_timeout_s=config.agent.run_timeout_s,
+            env_config=config.env,
+            agent_config=config.agent,
         )
+        end_time = time()
+        elapsed_time = (end_time - start_time) / 60
+        logger.info(f"Execution time: {elapsed_time:.4f} minutes")
 
         # Log final result
         if decision.status.value == "proceed":
