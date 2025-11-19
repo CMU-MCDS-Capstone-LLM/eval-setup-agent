@@ -1,0 +1,7 @@
+{
+  "iteration": 1,
+  "success": false,
+  "build_success": false,
+  "classification": "build_failed",
+  "message": "docker build failed"
+}

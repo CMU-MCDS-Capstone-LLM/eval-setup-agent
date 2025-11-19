@@ -1,0 +1,117 @@
+{
+  "type": "object",
+  "required": [
+    "status"
+  ],
+  "properties": {
+    "status": {
+      "enum": [
+        "proceed",
+        "refuse"
+      ]
+    },
+    "reason": {
+      "type": "string"
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    },
+    "variables": {
+      "type": "object",
+      "required": [
+        "python_version_tag",
+        "test_worksubdir",
+        "project_apt_packages",
+        "env_vars",
+        "pip_deps",
+        "install_editable",
+        "test_cmd"
+      ],
+      "properties": {
+        "python_version_tag": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+-slim$",
+          "description": "Docker Python base image tag with exact version in X.Y.Z-slim format. Choose the highest available patch version within the python_cap_minor constraint. Example agent output: '3.8.18-slim'. Example in Dockerfile: 'ARG PYTHON_VERSION=3.8.18-slim' then 'FROM python:${PYTHON_VERSION}'."
+        },
+        "test_worksubdir": {
+          "type": "string",
+          "description": "Subdirectory path relative to repository root where tests should execute. Use '.' if tests run from repo root. Use subdirectory path like 'backend' or 'packages/core' if tests must run from a specific location (common in monorepos or when test discovery expects a certain working directory). Example agent output: '.' for root, or 'src' for a subdirectory. Example in Dockerfile: 'WORKDIR /workspace/src' (if test_worksubdir='src')."
+        },
+        "project_apt_packages": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "List of Debian/Ubuntu system packages required by Python dependencies. Analyze requirements files and infer native libraries needed. Common mappings: cryptography needs ['libssl-dev', 'libffi-dev'], lxml needs ['libxml2-dev', 'libxslt1-dev'], psycopg2 needs ['libpq-dev'], mysqlclient needs ['default-libmysqlclient-dev'], scipy/numpy may need ['gfortran', 'libopenblas-dev'], Pillow needs ['libjpeg-dev', 'zlib1g-dev'], compilation needs ['gcc', 'g++']. Use empty array [] if no additional packages needed. Example agent output: ['gcc', 'libssl-dev', 'libffi-dev']. Example in Dockerfile: 'RUN apt-get install -y gcc libssl-dev libffi-dev'."
+        },
+        "env_vars": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Environment variables required for tests. Check pytest.ini, tox.ini, .github/workflows, or test files for expected variables. Include database URLs (using sqlite/in-memory where possible), service endpoints, API keys (use dummy/test values), feature flags, or test mode indicators. Use empty object {} if none needed. Example agent output: {'DATABASE_URL': 'sqlite:///test.db', 'CACHE_BACKEND': 'memory', 'DEBUG': 'false'}. Example in Dockerfile: 'ENV DATABASE_URL=\"sqlite:///test.db\"' on separate lines for each."
+        },
+        "pip_deps": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Ordered list of pip install arguments to install Python dependencies at build time. Each element is passed to 'pip install' separately. Common patterns: ['-r requirements.txt'] for single file, ['-r requirements.txt', '-r requirements-dev.txt'] for multiple, ['-r requirements/base.txt', '-r requirements/test.txt'] for nested. Can also be direct packages like ['requests>=2.28.0', 'click'] but prefer requirements files if they exist. Paths are relative to repo root. Example agent output: ['-r requirements.txt', '-r requirements-dev.txt']. Example in Dockerfile: Two 'pip install' commands executed sequentially in a RUN block."
+        },
+        "install_editable": {
+          "type": "boolean",
+          "description": "Whether to install the repository as an editable package at runtime before running tests. Set to true if: (1) repo defines a package via setup.py/setup.cfg/pyproject.toml, AND (2) tests import the package by name rather than relative imports, AND (3) package not already installed via pip_deps. Set to false if tests use relative imports, repo has no package definition, or package is in pip_deps. Example agent output: true. Example in run.sh: 'pip install -e .[dev,test] && pytest' (if true), or just 'pytest' (if false)."
+        },
+        "pip_loc_e_dep": {
+          "type": "string",
+          "description": "Argument for 'pip install -e' when install_editable is true. Use '.' for basic install, or '.[extras]' to include optional dependencies from extras_require (setup.py) or [project.optional-dependencies] (pyproject.toml). Check package definition for available extras like 'dev', 'test', 'testing', 'all', 'docs'. Include extras needed for tests to run. Ignored if install_editable is false. Example agent output: '.[dev,test]'. Example in run.sh: 'pip install -e .[dev,test] && pytest'."
+        },
+        "test_cmd": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Test execution command as array of arguments (for shell exec). Check tox.ini [testenv], pytest.ini, .github/workflows CI files, Makefile test targets, or README for actual command used. Common: ['pytest'] (basic), ['pytest', '-v'] (verbose), ['pytest', 'tests/'] (with path), ['python', '-m', 'pytest'] (module form), ['pytest', '--tb=short', '-x'] (with options). DO NOT include '&&' or other shell operators - just the test command itself. Example agent output: ['pytest', '-v', 'tests/']. Example in Dockerfile CMD: 'CMD [\"pytest\", \"-v\", \"tests/\"]'."
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "proceed"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "variables"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "refuse"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "reason"
+        ]
+      }
+    }
+  ],
+  "additionalProperties": false
+}

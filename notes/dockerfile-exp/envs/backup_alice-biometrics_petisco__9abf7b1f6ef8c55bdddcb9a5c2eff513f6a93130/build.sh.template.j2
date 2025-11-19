@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+{#- REQUIRED:
+   env_dir, image_tag, repo_path
+#}
+set -euo pipefail
+
+# Build the Docker image
+export DOCKER_BUILDKIT=1
+docker build -f {{ env_dir }}/Dockerfile -t {{ image_tag }} {{ repo_path }}

@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+{#- REQUIRED:
+   repo_path, mount_dir, image_tag
+#}
+set -euo pipefail
+
+# Run tests in container
+docker run --rm \
+  -v "{{ repo_path }}":"{{ mount_dir }}" \
+  --user "$(id -u):$(id -g)" \
+  {{ image_tag }}

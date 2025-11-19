@@ -1,0 +1,10 @@
+{
+  "status": "refuse",
+  "reason": "max rounds 1 reached",
+  "evidence": {
+    "loop": [
+      "max_rounds_exhausted"
+    ]
+  },
+  "variables": null
+}

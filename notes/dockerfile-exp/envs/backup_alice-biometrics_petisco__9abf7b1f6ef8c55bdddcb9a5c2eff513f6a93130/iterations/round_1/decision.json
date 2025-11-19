@@ -1,0 +1,30 @@
+{
+  "python_version_tag": "3.9.19-slim",
+  "mount_dir": "/mnt/repo",
+  "repo_bind_src": ".",
+  "test_workdir": "/workspace",
+  "app_user": "appuser",
+  "project_apt_packages": [
+    "build-essential",
+    "libssl-dev",
+    "libffi-dev",
+    "libyaml-dev"
+  ],
+  "env_vars": {
+    "PYTHONUNBUFFERED": "1",
+    "SQL_SERVER": "sqlite",
+    "SQL_DATABASE": "petisco_test.db"
+  },
+  "pip_deps": [
+    "-r requirements/requirements.txt",
+    "-r requirements/dev.txt"
+  ],
+  "install_editable": true,
+  "test_cmd": [
+    "pytest",
+    "-v",
+    "--tb=short",
+    "-m",
+    "unit"
+  ]
+}

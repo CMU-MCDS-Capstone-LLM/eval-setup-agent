@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+{% if install_editable %}
+TEST_CMD="pip install -e {{ pip_loc_e_dep }} && {{ test_cmd }}"
+{%- else -%}
+TEST_CMD="{{ test_cmd }}"
+{%- endif %}
+
+# Run tests in container
+docker run --rm \
+	-v "{{ repo_path }}":"{{ mount_dir }}" \
+	-w "{{ test_workdir }}" \
+	{{ image_tag }} \
+	bash -lc "$TEST_CMD"
